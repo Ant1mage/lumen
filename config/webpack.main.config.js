@@ -15,7 +15,6 @@ module.exports = {
       '@renderer': path.resolve(__dirname, '../src/renderer'),
     },
   },
-  target: 'electron-main',
   module: {
     rules: [
       {

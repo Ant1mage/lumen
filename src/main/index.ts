@@ -6,9 +6,6 @@ let mainWindow: BrowserWindow | null = null;
 let lumenCore: LumenCore | null = null;
 let lumenReady = false;
 
-console.log("Runtime Node Version:", process.versions.node);
-console.log("Runtime Electron Version:", process.versions.electron);
-
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,

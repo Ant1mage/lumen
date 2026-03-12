@@ -1,40 +1,50 @@
 {
   "compilerOptions": {
     /* 核心版本与语法支持 */
-    "target": "ESNext",
+    "target": "ES2024",
     "module": "Node16",
     "moduleResolution": "Node16",
-    "lib": ["ESNext", "DOM"],
+    "lib": [
+      "ES2024",
+      "DOM"
+    ],
     "jsx": "react-jsx",
-
     /* 路径映射迁移：取消 baseUrl，改用相对于当前文件的绝对路径 */
     // 注意：不再写 "baseUrl": "."
     "paths": {
-      "@main/*": ["./src/main/*"],
-      "@renderer/*": ["./src/renderer/*"],
-      "@preload/*": ["./src/preload/*"]
+      "@main/*": [
+        "./src/main/*"
+      ],
+      "@renderer/*": [
+        "./src/renderer/*"
+      ],
+      "@preload/*": [
+        "./src/preload/*"
+      ]
     },
-
     /* 模块兼容性 */
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-
     /* 严谨的类型检查 (修复之前提到的 null 问题) */
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
-
     /* 构建产物 */
     "outDir": "./dist",
     "rootDir": "./src",
     "sourceMap": true,
     "declaration": true,
-
     /* 消除已弃用警告 (如果不想大改路径逻辑，可以先加这一行，但建议按上面改) */
     "ignoreDeprecations": "5.0"
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "release"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "release"
+  ]
 }

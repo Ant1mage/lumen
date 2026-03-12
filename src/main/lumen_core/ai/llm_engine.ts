@@ -108,7 +108,7 @@ class LLMEngine {
     let fullResponse = "";
 
     await this.session.prompt(prompt, {
-      maxTokens: options?.maxTokens || 1024,
+      maxTokens: options?.maxTokens || 4096,
       temperature: options?.temperature || 0.7,
       topP: options?.topP || 0.9,
       onToken: (tokens) => {

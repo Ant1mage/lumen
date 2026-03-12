@@ -26,7 +26,7 @@ class LumenCore {
 
   /**
    * 最大 Prompt Token 数（基于模型 tokenizer 计算），超过则截断最旧的对话历史和参考资料。
-   * 这个值需要小于模型 contextSize（如 4096），预留一些空间给系统提示。
+   * 这个值需要小于模型 contextSize（如 3000），预留一些空间给系统提示。
    */
   private static readonly MAX_PROMPT_TOKENS = 3000;
 
