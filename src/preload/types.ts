@@ -14,16 +14,16 @@ export interface ElectronAPI {
   getCurrentModelSelection: () => Promise<{
     llm: string;
     embedding: string;
-    llmGpuLayers: number;
-    embeddingGpuLayers: number;
-    contextSize: number;
+    llmGpuLayers: number; // -1 表示自动
+    embeddingGpuLayers: number; // -1 表示自动
+    contextSize: number; // -1 表示自动
   }>;
   setModels: (options: {
     llmModelFile?: string;
     embeddingModelFile?: string;
-    llmGpuLayers?: number;
-    embeddingGpuLayers?: number;
-    contextSize?: number;
+    llmGpuLayers?: number | null;
+    embeddingGpuLayers?: number | null;
+    contextSize?: number | null;
   }) => Promise<boolean>;
 }
 

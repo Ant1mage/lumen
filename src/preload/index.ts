@@ -37,9 +37,9 @@ contextBridge.exposeInMainWorld("api", {
   setModels: (options: {
     llmModelFile?: string;
     embeddingModelFile?: string;
-    llmGpuLayers?: number;
-    embeddingGpuLayers?: number;
-    contextSize?: number;
+    llmGpuLayers?: number | null;
+    embeddingGpuLayers?: number | null;
+    contextSize?: number | null;
   }) => ipcRenderer.invoke("set-models", options),
   isReady: () => ipcRenderer.invoke("is-ready"),
 });

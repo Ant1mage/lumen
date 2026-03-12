@@ -16,6 +16,7 @@ class LLMEngine {
   private session: LlamaChatSession | null = null;
   private embeddingContext: LlamaEmbeddingContext | null = null;
   private isInitialized: boolean = false;
+  private config: LLMModelConfig = {}; // 保存当前配置
 
   async initialize(config?: LLMModelConfig): Promise<void> {
     if (this.isInitialized) return;
@@ -32,6 +33,9 @@ class LLMEngine {
 
       const modelPath = config?.modelPath || "";
       const desiredGpuLayers = config?.gpuLayers ?? 0;
+
+      // 保存配置供后续使用
+      this.config = config || {};
 
       if (!fs.existsSync(modelPath)) {
         throw new Error(`模型文件不存在：${modelPath}`);
@@ -84,8 +88,8 @@ class LLMEngine {
 
     return await this.session.prompt(prompt, {
       maxTokens: options?.maxTokens || 512,
-      temperature: options?.temperature || 0.7,
-      topP: options?.topP || 0.9,
+      temperature: options?.temperature ?? this.config.temperature ?? 0.7,
+      topP: options?.topP ?? this.config.topP ?? 0.9,
     });
   }
 
@@ -109,8 +113,8 @@ class LLMEngine {
 
     await this.session.prompt(prompt, {
       maxTokens: options?.maxTokens || 4096,
-      temperature: options?.temperature || 0.7,
-      topP: options?.topP || 0.9,
+      temperature: options?.temperature ?? this.config.temperature ?? 0.7,
+      topP: options?.topP ?? this.config.topP ?? 0.9,
       onToken: (tokens) => {
         // 解码并传出 token
         const tokenText = this.model!.detokenize(tokens);

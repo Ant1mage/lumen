@@ -7,6 +7,7 @@ import DatabaseEngine from "./db/database_engine";
 import { LLMRole, LLMMessage } from "./ai/llm_config";
 import { logger } from "./tools/logger";
 import PromptTool from "./tools/prompt_tool";
+import { systemMonitor } from "./tools/system_monitor";
 
 class LumenCore {
   private database!: DatabaseEngine;
@@ -17,9 +18,9 @@ class LumenCore {
   // 当前选中的模型配置
   private currentLLMModel: string = LLMPath.getDefaultLLM();
   private currentEmbeddingModel: string = LLMPath.getDefaultEmbedding();
-  private currentLLMGpuLayers = 32;
-  private currentEmbeddingGpuLayers = 0;
-  private currentContextSize = 4096;
+  private currentLLMGpuLayers: number | null = null; // null 表示使用自动推荐
+  private currentEmbeddingGpuLayers: number | null = null;
+  private currentContextSize: number | null = null;
 
   // 使用规范化的 LLMMessage 类型管理对话历史
   private chatHistory: LLMMessage[] = [];
@@ -39,6 +40,16 @@ class LumenCore {
       logger.pruneOldLogs(7);
       logger.info("Lumen Engine: 正在初始化核心组件...", "SYSTEM");
 
+      // 0. 检测系统信息并获取推荐参数
+      const systemInfo = await systemMonitor.getSystemInfo();
+      const llmParams = await systemMonitor.getRecommendedLLMParams();
+      const embeddingParams = await systemMonitor.getRecommendedEmbeddingParams();
+      
+      logger.info(
+        `根据机型 (${systemInfo.machineType}) 自动配置参数：GPU Layers=${llmParams.gpuLayers}, Context=${llmParams.contextSize}`,
+        "SYSTEM"
+      );
+
       // 1. 初始化本地数据库
       this.database = new DatabaseEngine();
       await this.database.initialize();
@@ -50,15 +61,18 @@ class LumenCore {
       this.embedding = new LLMEngine();
       await this.embedding.initialize({
         modelPath: LLMPath.getDefaultEmbedding(),
-        gpuLayers: 0,
+        gpuLayers: this.currentEmbeddingGpuLayers ?? embeddingParams.gpuLayers,
+        contextSize: embeddingParams.contextSize,
       });
 
       // 3. 初始化 LLM 推理实例
       this.llm = new LLMEngine();
       await this.llm.initialize({
         modelPath: this.currentLLMModel,
-        contextSize: this.currentContextSize,
-        gpuLayers: this.currentLLMGpuLayers,
+        contextSize: this.currentContextSize ?? llmParams.contextSize,
+        gpuLayers: this.currentLLMGpuLayers ?? llmParams.gpuLayers,
+        temperature: llmParams.temperature,
+        topP: llmParams.topP,
       });
 
       // 4. 初始化 RAG 引擎（支持可配置的相似度与缓存策略）
@@ -204,18 +218,18 @@ class LumenCore {
     return {
       llm: path.basename(this.currentLLMModel),
       embedding: path.basename(this.currentEmbeddingModel),
-      llmGpuLayers: this.currentLLMGpuLayers,
-      embeddingGpuLayers: this.currentEmbeddingGpuLayers,
-      contextSize: this.currentContextSize,
+      llmGpuLayers: this.currentLLMGpuLayers ?? -1, // -1 表示自动
+      embeddingGpuLayers: this.currentEmbeddingGpuLayers ?? -1,
+      contextSize: this.currentContextSize ?? -1,
     };
   }
 
   async switchModels(options: {
     llmModelFile?: string;
     embeddingModelFile?: string;
-    llmGpuLayers?: number;
-    embeddingGpuLayers?: number;
-    contextSize?: number;
+    llmGpuLayers?: number | null;
+    embeddingGpuLayers?: number | null;
+    contextSize?: number | null;
   }) {
     // 保存当前设置
     if (options.llmModelFile) {
@@ -224,13 +238,13 @@ class LumenCore {
     if (options.embeddingModelFile) {
       this.currentEmbeddingModel = LLMPath.getPath(options.embeddingModelFile);
     }
-    if (typeof options.llmGpuLayers === "number") {
+    if (options.llmGpuLayers !== undefined) {
       this.currentLLMGpuLayers = options.llmGpuLayers;
     }
-    if (typeof options.embeddingGpuLayers === "number") {
+    if (options.embeddingGpuLayers !== undefined) {
       this.currentEmbeddingGpuLayers = options.embeddingGpuLayers;
     }
-    if (typeof options.contextSize === "number") {
+    if (options.contextSize !== undefined) {
       this.currentContextSize = options.contextSize;
     }
 
@@ -240,17 +254,24 @@ class LumenCore {
     await this.llm?.dispose();
     await this.embedding?.dispose();
 
+    // 如果用户没有指定参数，则使用系统推荐值
+    const llmParams = await systemMonitor.getRecommendedLLMParams();
+    const embeddingParams = await systemMonitor.getRecommendedEmbeddingParams();
+
     this.embedding = new LLMEngine();
     await this.embedding.initialize({
       modelPath: this.currentEmbeddingModel,
-      gpuLayers: this.currentEmbeddingGpuLayers,
+      gpuLayers: this.currentEmbeddingGpuLayers ?? embeddingParams.gpuLayers,
+      contextSize: embeddingParams.contextSize,
     });
 
     this.llm = new LLMEngine();
     await this.llm.initialize({
       modelPath: this.currentLLMModel,
-      gpuLayers: this.currentLLMGpuLayers,
-      contextSize: this.currentContextSize,
+      gpuLayers: this.currentLLMGpuLayers ?? llmParams.gpuLayers,
+      contextSize: this.currentContextSize ?? llmParams.contextSize,
+      temperature: llmParams.temperature,
+      topP: llmParams.topP,
     });
 
     // 重新构建 RAG 引擎，确保 embedding 实例已更新

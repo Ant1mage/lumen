@@ -109,9 +109,9 @@ ipcMain.handle(
     options: {
       llmModelFile?: string;
       embeddingModelFile?: string;
-      llmGpuLayers?: number;
-      embeddingGpuLayers?: number;
-      contextSize?: number;
+      llmGpuLayers?: number | null;
+      embeddingGpuLayers?: number | null;
+      contextSize?: number | null;
     },
   ) => {
     if (!lumenCore) return false;
