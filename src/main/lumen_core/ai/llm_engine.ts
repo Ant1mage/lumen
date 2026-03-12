@@ -44,6 +44,7 @@ class LLMEngine {
       logger.info(`加载模型：${modelPath} (GPU Layers: ${desiredGpuLayers})`);
 
       // 1. 加载模型
+      // 注意：某些 GGUF 模型的 vocab 可能缺少 newline token，node-llama-cpp 会自动处理
       this.model = await llama.loadModel({
         modelPath,
         gpuLayers: desiredGpuLayers,
