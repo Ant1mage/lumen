@@ -30,6 +30,7 @@ module.exports = {
   },
   externals: {
     'better-sqlite3': 'commonjs better-sqlite3',
-    'node-llama-cpp': 'commonjs node-llama-cpp',
+    // Note: node-llama-cpp is ESM-only; we load it at runtime via dynamic import.
+    // Do not bundle or require it here, otherwise it will fail with ERR_REQUIRE_ESM.
   },
 };

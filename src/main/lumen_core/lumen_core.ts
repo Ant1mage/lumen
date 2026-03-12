@@ -1,3 +1,4 @@
+import path from "path";
 import LLMEngine from "./ai/llm_engine";
 import RagEngine from "./rag/rag_engine";
 import LLMPath from "./ai/llm_path";
@@ -11,6 +12,13 @@ class LumenCore {
   private embedding!: LLMEngine; // 专门负责向量化的 BGE-M3
   private llm!: LLMEngine; // 专门负责生成的 Qwen
   private rag!: RagEngine;
+
+  // 当前选中的模型配置
+  private currentLLMModel: string = LLMPath.getDefaultLLM();
+  private currentEmbeddingModel: string = LLMPath.getDefaultEmbedding();
+  private currentLLMGpuLayers = 32;
+  private currentEmbeddingGpuLayers = 0;
+  private currentContextSize = 4096;
 
   // 使用规范化的 LLMMessage 类型管理对话历史
   private chatHistory: LLMMessage[] = [];
@@ -34,19 +42,22 @@ class LumenCore {
       this.database = new DatabaseEngine();
       await this.database.initialize();
 
+      // 加载历史会话记录（持久化到本地数据库）
+      await this.loadChatHistory();
+
       // 2. 初始化 Embedding 实例
       this.embedding = new LLMEngine();
       await this.embedding.initialize({
-        modelPath: LLMPath.getPath("bge-m3-q8_0.gguf"),
+        modelPath: LLMPath.getDefaultEmbedding(),
         gpuLayers: 0,
       });
 
       // 3. 初始化 LLM 推理实例
       this.llm = new LLMEngine();
       await this.llm.initialize({
-        modelPath: LLMPath.getPath("Qwen3.5-4B-Q4_K_M.gguf"),
-        contextSize: 4096,
-        gpuLayers: 32,
+        modelPath: this.currentLLMModel,
+        contextSize: this.currentContextSize,
+        gpuLayers: this.currentLLMGpuLayers,
       });
 
       // 4. 初始化 RAG 引擎（支持可配置的相似度与缓存策略）
@@ -147,6 +158,10 @@ Assistant:`;
     logger.chat(LLMRole.User, question);
 
     try {
+      // 持久化用户输入，避免丢失会话记录
+      this.chatHistory.push({ role: LLMRole.User, content: question });
+      await this.persistChatMessage(LLMRole.User, question);
+
       // 1. 检索 (Retrieval)
       const searchStart = Date.now();
       const contexts = await this.rag.search(question, 3);
@@ -156,10 +171,7 @@ Assistant:`;
         contexts.length > 0 ? contexts.join("\n\n") : "未找到相关参考资料。";
 
       // 2. 构造消息队列
-      const messages: LLMMessage[] = [
-        ...this.chatHistory,
-        { role: LLMRole.User, content: question },
-      ];
+      const messages: LLMMessage[] = [...this.chatHistory];
 
       // 3. 组装最终 Prompt，并确保不会超过最大长度导致模型 OOM
       const { messages: safeMessages, contextText: safeContext } =
@@ -174,10 +186,10 @@ Assistant:`;
       });
 
       logger.chat(LLMRole.Assistant, fullResponse);
+      await this.persistChatMessage(LLMRole.Assistant, fullResponse);
       logger.perf("Total Response Time", Date.now() - startTime);
 
       // 5. 更新上下文 (保持最近 5 轮，即 10 条记录)
-      this.chatHistory.push({ role: LLMRole.User, content: question });
       this.chatHistory.push({ role: LLMRole.Assistant, content: fullResponse });
       if (this.chatHistory.length > 10) this.chatHistory.splice(0, 2);
 
@@ -200,6 +212,132 @@ Assistant:`;
   }
 
   /**
+   * 列出本地模型文件（可用的 gguf 模型）
+   */
+  async getAvailableModels() {
+    return LLMPath.listModels();
+  }
+
+  /**
+   * 获取当前选中的模型配置
+   */
+  getCurrentModelSelection() {
+    return {
+      llm: path.basename(this.currentLLMModel),
+      embedding: path.basename(this.currentEmbeddingModel),
+      llmGpuLayers: this.currentLLMGpuLayers,
+      embeddingGpuLayers: this.currentEmbeddingGpuLayers,
+      contextSize: this.currentContextSize,
+    };
+  }
+
+  async switchModels(options: {
+    llmModelFile?: string;
+    embeddingModelFile?: string;
+    llmGpuLayers?: number;
+    embeddingGpuLayers?: number;
+    contextSize?: number;
+  }) {
+    // 保存当前设置
+    if (options.llmModelFile) {
+      this.currentLLMModel = LLMPath.getPath(options.llmModelFile);
+    }
+    if (options.embeddingModelFile) {
+      this.currentEmbeddingModel = LLMPath.getPath(options.embeddingModelFile);
+    }
+    if (typeof options.llmGpuLayers === "number") {
+      this.currentLLMGpuLayers = options.llmGpuLayers;
+    }
+    if (typeof options.embeddingGpuLayers === "number") {
+      this.currentEmbeddingGpuLayers = options.embeddingGpuLayers;
+    }
+    if (typeof options.contextSize === "number") {
+      this.currentContextSize = options.contextSize;
+    }
+
+    // 重新初始化模型（保持数据库与 RAG 引擎）
+    logger.info("正在切换模型并重新加载引擎...", "CORE");
+
+    await this.llm?.dispose();
+    await this.embedding?.dispose();
+
+    this.embedding = new LLMEngine();
+    await this.embedding.initialize({
+      modelPath: this.currentEmbeddingModel,
+      gpuLayers: this.currentEmbeddingGpuLayers,
+    });
+
+    this.llm = new LLMEngine();
+    await this.llm.initialize({
+      modelPath: this.currentLLMModel,
+      gpuLayers: this.currentLLMGpuLayers,
+      contextSize: this.currentContextSize,
+    });
+
+    // 重新构建 RAG 引擎，确保 embedding 实例已更新
+    this.rag = new RagEngine(this.database, this.embedding, {
+      minScore: 0.3,
+      maxDocs: 500,
+      cacheStrategy: "lru",
+      cacheTTL: 1000 * 60 * 60 * 24,
+    });
+    await this.rag.initialize();
+
+    logger.info("模型切换完成", "CORE");
+  }
+
+  /**
+   * 从数据库加载最近的会话历史（持久化）
+   */
+  async loadChatHistory(limit: number = 100) {
+    if (!this.database) return;
+    try {
+      const records = this.database.getChatHistory(limit);
+      this.chatHistory = records.map((r) => ({
+        role: r.role as LLMRole,
+        content: r.content,
+      }));
+      logger.info(
+        `会话历史已恢复（最近 ${this.chatHistory.length} 条）`,
+        "CORE",
+      );
+    } catch (error) {
+      logger.error("加载会话历史失败", error);
+    }
+  }
+
+  async getChatHistory(limit: number = 100) {
+    if (!this.database) return this.chatHistory;
+    try {
+      return this.database.getChatHistory(limit);
+    } catch (error) {
+      logger.error("读取会话历史失败", error);
+      return this.chatHistory;
+    }
+  }
+
+  async clearHistory() {
+    this.chatHistory = [];
+    if (!this.database) return;
+
+    try {
+      this.database.clearChatHistory();
+      logger.info("会话历史已清空（含持久化数据）", "CORE");
+    } catch (error) {
+      logger.error("清空会话历史失败", error);
+    }
+  }
+
+  private async persistChatMessage(role: LLMRole, content: string) {
+    if (!this.database) return;
+    try {
+      this.database.insertChatMessage(role, content);
+    } catch (error) {
+      logger.error("写入会话历史失败", error);
+    }
+  }
+
+  /**
    * 重置会话状态
    */
   clearSession() {
@@ -214,6 +352,7 @@ Assistant:`;
     await this.llm?.dispose();
     await this.embedding?.dispose();
     this.chatHistory = [];
+    await this.database?.close();
     logger.info("Lumen Engine: 资源已释放", "SYSTEM");
   }
 }

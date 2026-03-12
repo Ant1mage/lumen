@@ -8,13 +8,26 @@ interface ChatMessage {
 }
 
 interface ChatBoxProps {
-  onSendMessage: (message: string) => Promise<void>;
+  onSendMessage: (
+    message: string,
+    onToken: (token: string) => void,
+  ) => Promise<string>;
+  initialMessages?: ChatMessage[];
   isLoading?: boolean;
 }
 
-const ChatBox: React.FC<ChatBoxProps> = ({ onSendMessage, isLoading = false }) => {
+const ChatBox: React.FC<ChatBoxProps> = ({
+  onSendMessage,
+  initialMessages = [],
+  isLoading = false,
+}) => {
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+
+  React.useEffect(() => {
+    setMessages(initialMessages);
+  }, [initialMessages]);
+  const messagesRef = React.useRef<HTMLDivElement | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,20 +40,56 @@ const ChatBox: React.FC<ChatBoxProps> = ({ onSendMessage, isLoading = false }) =
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
 
+    const assistantId = Date.now() + 1;
+    const assistantMessage: ChatMessage = {
+      id: assistantId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, assistantMessage]);
+
+    const onToken = (token: string) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantId
+            ? { ...msg, content: msg.content + token }
+            : msg,
+        ),
+      );
+    };
+
     try {
-      await onSendMessage(input);
+      await onSendMessage(input, onToken);
     } catch (error) {
       console.error('发送消息失败:', error);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantId
+            ? {
+                ...msg,
+                content: `发送失败：${
+                  error instanceof Error ? error.message : '未知错误'
+                }`,
+              }
+            : msg,
+        ),
+      );
     }
   };
 
+  React.useEffect(() => {
+    if (!messagesRef.current) return;
+    messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+  }, [messages, isLoading]);
+
   return (
     <div className="chat-box">
-      <div className="chat-messages">
-        {messages.map(msg => (
+      <div className="chat-messages" ref={messagesRef}>
+        {messages.map((msg) => (
           <div key={msg.id} className={`message ${msg.role}`}>
             <div className="message-content">{msg.content}</div>
             <div className="message-time">
@@ -54,7 +103,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ onSendMessage, isLoading = false }) =
           </div>
         )}
       </div>
-      
+
       <form onSubmit={handleSubmit} className="chat-input-form">
         <input
           type="text"
@@ -64,8 +113,8 @@ const ChatBox: React.FC<ChatBoxProps> = ({ onSendMessage, isLoading = false }) =
           className="chat-input"
           disabled={isLoading}
         />
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={isLoading || !input.trim()}
           className="send-btn"
         >

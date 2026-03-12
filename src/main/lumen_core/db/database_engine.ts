@@ -48,11 +48,59 @@ class DatabaseEngine {
       )
     `);
 
+    // 聊天记录表（用于持久化对话历史）
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS chat_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // 创建索引
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_stocks_symbol ON stocks(symbol);
       CREATE INDEX IF NOT EXISTS idx_documents_created ON documents(created_at);
+      CREATE INDEX IF NOT EXISTS idx_chat_history_time ON chat_history(timestamp);
     `);
+  }
+
+  // 聊天记录持久化
+  insertChatMessage(role: string, content: string): number {
+    if (!this.db) throw new Error("数据库未初始化");
+
+    const stmt = this.db.prepare(`
+      INSERT INTO chat_history (role, content)
+      VALUES (?, ?)
+    `);
+
+    const result = stmt.run(role, content);
+    return result.lastInsertRowid as number;
+  }
+
+  getChatHistory(
+    limit: number = 100,
+  ): { role: string; content: string; timestamp: string }[] {
+    if (!this.db) throw new Error("数据库未初始化");
+
+    const stmt = this.db.prepare(`
+      SELECT role, content, timestamp FROM chat_history
+      ORDER BY timestamp ASC
+      LIMIT ?
+    `);
+
+    return stmt.all(limit) as {
+      role: string;
+      content: string;
+      timestamp: string;
+    }[];
+  }
+
+  clearChatHistory(): void {
+    if (!this.db) throw new Error("数据库未初始化");
+
+    this.db.prepare(`DELETE FROM chat_history`).run();
   }
 
   // 股票相关操作

@@ -23,7 +23,10 @@ class LLMEngine {
     try {
       logger.info("正在初始化 Llama 服务...");
 
-      const { getLlama, LlamaChatSession } = await import("node-llama-cpp");
+      // node-llama-cpp is ESM-only; ensure Webpack doesn't try to bundle/require it
+      const { getLlama, LlamaChatSession } = await import(
+        /* webpackIgnore: true */ "node-llama-cpp"
+      );
       const llama = await getLlama();
 
       const modelPath = config?.modelPath || "";

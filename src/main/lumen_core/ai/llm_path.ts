@@ -1,3 +1,4 @@
+import fs from "fs";
 import path from "path";
 import { app } from "electron";
 
@@ -40,6 +41,19 @@ export class LLMPath {
    */
   public static getDefaultEmbedding(): string {
     return this.getPath("bge-m3-q8_0.gguf");
+  }
+
+  /**
+   * 列出可用的模型文件（gguf）
+   */
+  public static listModels(): string[] {
+    const root = this.getRootPath();
+    try {
+      const files = fs.readdirSync(root);
+      return files.filter((file) => file.toLowerCase().endsWith(".gguf"));
+    } catch {
+      return [];
+    }
   }
 }
 
