@@ -158,12 +158,13 @@ Assistant:`;
   /**
    * 彻底释放资源
    */
-  dispose() {
-    this.llm?.dispose();
-    this.embedding?.dispose();
+  async dispose() {
+    await this.llm?.dispose();
+    await this.embedding?.dispose();
     this.chatHistory = [];
     logger.info("Lumen Engine: 资源已释放", "SYSTEM");
   }
 }
+
 
 export default LumenCore;

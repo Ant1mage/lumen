@@ -12,6 +12,11 @@ export interface RAGDocument {
 class RagEngine {
   private documents: Map<number, RAGDocument> = new Map();
 
+  /**
+   * 低于此相似度的文档将被过滤，避免返回无关结果
+   */
+  private static readonly MIN_SIMILARITY = 0.3;
+
   constructor(
     private db: DatabaseEngine,
     private embeddingEngine: LLMEngine,
@@ -37,7 +42,7 @@ class RagEngine {
       content,
       embedding: JSON.stringify(embedding),
       metadata: metadata ? JSON.stringify(metadata) : undefined,
-      created_at: new Date(),
+      created_at: new Date().toISOString(),
     });
     const newDoc = { id, content, embedding, metadata };
     this.documents.set(id, newDoc);
@@ -47,12 +52,17 @@ class RagEngine {
   // 只负责查：输入问题，返回相似文档片段
   async search(query: string, limit: number = 5) {
     const queryEmbedding = await this.embeddingEngine.embed(query);
+
     const results = Array.from(this.documents.values())
-      .map((doc) => ({
-        doc,
-        score: this.cosineSimilarity(queryEmbedding, doc.embedding),
-      }))
-      .filter((res) => res.score > 0.3) // 过滤低相关性
+      .map((doc) => {
+        if (!doc.embedding || doc.embedding.length === 0) return null;
+        if (doc.embedding.length !== queryEmbedding.length) return null;
+
+        const score = this.cosineSimilarity(queryEmbedding, doc.embedding);
+        return { doc, score };
+      })
+      .filter((res): res is { doc: RAGDocument; score: number } => !!res)
+      .filter((res) => res.score >= RagEngine.MIN_SIMILARITY)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
 

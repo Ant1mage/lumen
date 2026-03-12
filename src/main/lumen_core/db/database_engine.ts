@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import path from "path";
 import { app } from "electron";
-import { DocumentData, StockData } from "./datebase_model";
+import { DocumentData, StockData } from "./database_model";
 import { logger } from "../tools/logger";
 
 class DatabaseEngine {
@@ -11,8 +11,9 @@ class DatabaseEngine {
     const dbPath = path.join(app.getPath("userData"), "lumen.db");
     this.db = new Database(dbPath);
 
-    // 启用外键支持
+    // 启用 WAL 模式提升写性能，并开启外键支持
     this.db.pragma("journal_mode = WAL");
+    this.db.pragma("foreign_keys = ON");
 
     // 创建表
     this.createTables();
@@ -93,11 +94,14 @@ class DatabaseEngine {
       VALUES (?, ?, ?)
     `);
 
-    const result = stmt.run(
-      doc.content,
-      doc.embedding || null,
-      doc.metadata ? JSON.stringify(doc.metadata) : null,
-    );
+    const metadataValue =
+      typeof doc.metadata === "string"
+        ? doc.metadata
+        : doc.metadata
+          ? JSON.stringify(doc.metadata)
+          : null;
+
+    const result = stmt.run(doc.content, doc.embedding || null, metadataValue);
 
     return result.lastInsertRowid as number;
   }

@@ -36,17 +36,14 @@ function createWindow() {
   });
 }
 
-
-
 function cleanup() {
   if (database) {
     database.close();
   }
   if (llamaService) {
-    llamaService.dispose();
+    void llamaService.dispose();
   }
 }
-
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {

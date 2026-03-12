@@ -13,5 +13,5 @@ export interface DocumentData {
   content: string;
   embedding?: string;
   metadata?: string;
-  created_at: Date;
+  created_at: string;
 }

@@ -129,31 +129,32 @@ class LLMEngine {
     return Array.from(embedding.vector);
   }
 
-  /**
-   * 格式化消息数组
-   */
-  private formatChatMessages(
-    messages: Array<{ role: LLMRole; content: string }>,
-  ): string {
-    return (
-      messages
-        .map((msg) => {
-          switch (msg.role) {
-            case LLMRole.System:
-              return `System: ${msg.content}`;
-            case LLMRole.User:
-              return `User: ${msg.content}`;
-            case LLMRole.Assistant:
-              return `Assistant: ${msg.content}`;
-            default:
-              return msg.content;
-          }
-        })
-        .join("\n\n") + "\n\nAssistant:"
-    );
-  }
+  async dispose(): Promise<void> {
+    // 释放所有 llama-cpp 资源（按照生命周期依赖顺序）
+    try {
+      await this.session?.dispose();
+    } catch (error) {
+      logger.error("释放 Llama 会话失败", error);
+    }
 
-  dispose(): void {
+    try {
+      await this.embeddingContext?.dispose();
+    } catch (error) {
+      logger.error("释放 Embedding 上下文失败", error);
+    }
+
+    try {
+      await this.context?.dispose();
+    } catch (error) {
+      logger.error("释放推理上下文失败", error);
+    }
+
+    try {
+      await this.model?.dispose();
+    } catch (error) {
+      logger.error("释放模型失败", error);
+    }
+
     this.session = null;
     this.embeddingContext = null;
     this.context = null;
