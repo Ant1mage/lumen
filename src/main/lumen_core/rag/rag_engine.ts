@@ -9,30 +9,93 @@ export interface RAGDocument {
   metadata?: Record<string, any>;
 }
 
+export interface RagEngineOptions {
+  /** Minimum similarity score to include in results (0-1) */
+  minScore?: number;
+  /** Maximum number of documents to keep in memory cache */
+  maxDocs?: number;
+  /** Cache eviction strategy when maxDocs is reached */
+  cacheStrategy?: "none" | "fifo" | "lru";
+  /** Time-to-live (ms) for cached documents (only used when set) */
+  cacheTTL?: number;
+}
+
 class RagEngine {
   private documents: Map<number, RAGDocument> = new Map();
+  private cacheOrder: number[] = [];
+  private cacheTimestamps: Map<number, number> = new Map();
 
-  /**
-   * 低于此相似度的文档将被过滤，避免返回无关结果
-   */
-  private static readonly MIN_SIMILARITY = 0.3;
+  private minSimilarity: number;
+  private maxDocs: number;
+  private cacheStrategy: "none" | "fifo" | "lru";
+  private cacheTTL?: number;
 
   constructor(
     private db: DatabaseEngine,
     private embeddingEngine: LLMEngine,
-  ) {}
+    options: RagEngineOptions = {},
+  ) {
+    this.minSimilarity = options.minScore ?? 0.3;
+    this.maxDocs = options.maxDocs ?? 1000;
+    this.cacheStrategy = options.cacheStrategy ?? "fifo";
+    this.cacheTTL = options.cacheTTL;
+  }
 
   async initialize(): Promise<void> {
-    const docs = this.db.getAllDocuments(1000);
+    // 只加载最新的 maxDocs 条记录，防止内存过大
+    const docs = this.db.getAllDocuments(this.maxDocs);
+    const now = Date.now();
+
     for (const doc of docs) {
-      this.documents.set(doc.id!, {
+      if (!doc.id) continue;
+      this.documents.set(doc.id, {
         id: doc.id,
         content: doc.content,
         embedding: doc.embedding ? JSON.parse(doc.embedding) : [],
         metadata: doc.metadata ? JSON.parse(doc.metadata) : undefined,
       });
+      this.cacheOrder.push(doc.id);
+      this.cacheTimestamps.set(doc.id, now);
     }
+
+    this.evictExpired();
+    this.evictIfNeeded();
+
     logger.info(`RagEngine: 已加载 ${this.documents.size} 条本地索引`);
+  }
+
+  private evictExpired() {
+    if (!this.cacheTTL) return;
+
+    const cutoff = Date.now() - this.cacheTTL;
+    for (const [id, ts] of this.cacheTimestamps.entries()) {
+      if (ts < cutoff) {
+        this.documents.delete(id);
+        this.cacheTimestamps.delete(id);
+        this.cacheOrder = this.cacheOrder.filter((x) => x !== id);
+      }
+    }
+  }
+
+  private recordAccess(id: number) {
+    this.cacheTimestamps.set(id, Date.now());
+
+    if (this.cacheStrategy !== "lru") return;
+    // Move to back of queue for LRU
+    this.cacheOrder = this.cacheOrder.filter((x) => x !== id);
+    this.cacheOrder.push(id);
+  }
+
+  private evictIfNeeded() {
+    if (this.cacheStrategy === "none") return;
+
+    while (this.documents.size > this.maxDocs) {
+      // FIFO / LRU: evict the oldest tracked item
+      const evictId = this.cacheOrder.shift();
+      if (!evictId) break;
+      this.documents.delete(evictId);
+      this.cacheTimestamps.delete(evictId);
+    }
   }
 
   // 只负责存：生成向量并存库
@@ -44,14 +107,24 @@ class RagEngine {
       metadata: metadata ? JSON.stringify(metadata) : undefined,
       created_at: new Date().toISOString(),
     });
+
     const newDoc = { id, content, embedding, metadata };
     this.documents.set(id, newDoc);
+    this.cacheOrder.push(id);
+    this.cacheTimestamps.set(id, Date.now());
+
+    this.evictExpired();
+    this.evictIfNeeded();
+
     return newDoc;
   }
 
   // 只负责查：输入问题，返回相似文档片段
   async search(query: string, limit: number = 5) {
+    this.evictExpired();
+
     const queryEmbedding = await this.embeddingEngine.embed(query);
+    const effectiveLimit = Math.min(limit, this.maxDocs);
 
     const results = Array.from(this.documents.values())
       .map((doc) => {
@@ -62,9 +135,14 @@ class RagEngine {
         return { doc, score };
       })
       .filter((res): res is { doc: RAGDocument; score: number } => !!res)
-      .filter((res) => res.score >= RagEngine.MIN_SIMILARITY)
+      .filter((res) => res.score >= this.minSimilarity)
       .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+      .slice(0, effectiveLimit);
+
+    // 更新访问时间/顺序（LRU）
+    for (const { doc } of results) {
+      if (doc.id) this.recordAccess(doc.id);
+    }
 
     return results.map((r) => r.doc.content);
   }

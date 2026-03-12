@@ -106,6 +106,28 @@ class DatabaseEngine {
     return result.lastInsertRowid as number;
   }
 
+  /**
+   * 在事务中运行多个数据库操作，确保要么全部成功要么全部回滚。
+   */
+  runInTransaction<T>(fn: () => T): T {
+    if (!this.db) throw new Error("数据库未初始化");
+    const transaction = this.db.transaction(fn);
+    return transaction();
+  }
+
+  /**
+   * 批量插入文档，利用事务保证一致性和性能。
+   */
+  insertDocuments(docs: DocumentData[]): number[] {
+    return this.runInTransaction(() => {
+      const ids: number[] = [];
+      for (const doc of docs) {
+        ids.push(this.insertDocument(doc));
+      }
+      return ids;
+    });
+  }
+
   searchDocuments(query: string, limit: number = 10): DocumentData[] {
     if (!this.db) throw new Error("数据库未初始化");
 

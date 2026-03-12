@@ -4,9 +4,10 @@ import type {
   LlamaContext,
   LlamaModel,
   LlamaEmbeddingContext,
+  Token,
 } from "node-llama-cpp";
 import * as fs from "fs";
-import { LLMModelConfig, LLMRole } from "./llm_config";
+import { LLMModelConfig } from "./llm_config";
 import { logger } from "../tools/logger";
 
 class LLMEngine {
@@ -127,6 +128,36 @@ class LLMEngine {
 
     const embedding = await this.embeddingContext.getEmbeddingFor(text);
     return Array.from(embedding.vector);
+  }
+
+  /**
+   * 直接访问模型 tokenizer 进行 token 计数。
+   */
+  countTokens(text: string): number {
+    if (!this.isInitialized || !this.model) {
+      throw new Error("Llama 服务未初始化");
+    }
+    return this.model.tokenize(text).length;
+  }
+
+  /**
+   * 通过模型 tokenizer 将文本拆成 token 列表。
+   */
+  tokenize(text: string): Token[] {
+    if (!this.isInitialized || !this.model) {
+      throw new Error("Llama 服务未初始化");
+    }
+    return this.model.tokenize(text);
+  }
+
+  /**
+   * 通过模型 detokenize 将 token 列表还原为文本。
+   */
+  detokenize(tokens: readonly Token[]): string {
+    if (!this.isInitialized || !this.model) {
+      throw new Error("Llama 服务未初始化");
+    }
+    return this.model.detokenize(tokens);
   }
 
   async dispose(): Promise<void> {

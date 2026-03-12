@@ -1,13 +1,11 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow } from "electron";
 import path from "path";
 import Database from "./lumen_core/db/database_engine";
 import LlmEngine from "./lumen_core/ai/llm_engine";
-import RagEngine from "./lumen_core/rag/rag_engine";
-
+// RagEngine is declared but not used in this entrypoint.
 let mainWindow: BrowserWindow | null = null;
 let database: Database | null = null;
 let llamaService: LlmEngine | null = null;
-let ragEngine: RagEngine | null = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({

@@ -1,6 +1,7 @@
 import log from "electron-log/main";
 import path from "path";
 import * as fs from "fs";
+import { app } from "electron";
 import { LLMRole } from "../ai/llm_config";
 
 // 1. 深度配置日志文件路径
@@ -56,6 +57,25 @@ class LoggerService {
           }
         }
       });
+
+      // 另外，对于 error.log 做周期性切割，避免单个文件无限增大。
+      const errorLogPath = path.join(logDir, "error.log");
+      if (fs.existsSync(errorLogPath)) {
+        const stats = fs.statSync(errorLogPath);
+        if (now - stats.mtimeMs > expirationMs) {
+          const rotateName = `error-${new Date()
+            .toISOString()
+            .replace(/[:.]/g, "-")}.log`;
+          const rotatedPath = path.join(logDir, rotateName);
+          try {
+            fs.renameSync(errorLogPath, rotatedPath);
+            fs.writeFileSync(errorLogPath, "");
+            this.info(`切割过期 error.log -> ${rotateName}`, "SYSTEM");
+          } catch (e) {
+            // best-effort
+          }
+        }
+      }
     } catch (error) {
       this.error("清理旧日志失败", error);
     }
@@ -78,8 +98,43 @@ class LoggerService {
     log.info(`[PERF] ${label} took ${duration}ms`);
   }
 
+  private getErrorLogFilePath(): string {
+    let baseDir: string;
+    try {
+      baseDir = app?.getPath ? app.getPath("userData") : process.cwd();
+    } catch {
+      baseDir = process.cwd();
+    }
+
+    const logDir = path.join(baseDir, "logs");
+    try {
+      fs.mkdirSync(logDir, { recursive: true });
+    } catch {
+      // ignore
+    }
+
+    return path.join(logDir, "error.log");
+  }
+
+  private appendErrorLog(content: string): void {
+    try {
+      const filePath = this.getErrorLogFilePath();
+      fs.appendFileSync(filePath, content + "\n");
+    } catch {
+      // best-effort, do not throw
+    }
+  }
+
   error(message: string, error?: any) {
+    const timestamp = new Date().toISOString();
+    const errorText =
+      error instanceof Error
+        ? error.stack || error.message
+        : JSON.stringify(error);
+    const formatted = `${timestamp} [ERROR] ${message} ${errorText}`;
+
     log.error(`[ERROR] ${message}`, error);
+    this.appendErrorLog(formatted);
   }
 }
 

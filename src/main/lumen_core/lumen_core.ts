@@ -16,6 +16,12 @@ class LumenCore {
   private chatHistory: LLMMessage[] = [];
 
   /**
+   * 最大 Prompt Token 数（基于模型 tokenizer 计算），超过则截断最旧的对话历史和参考资料。
+   * 这个值需要小于模型 contextSize（如 4096），预留一些空间给系统提示。
+   */
+  private static readonly MAX_PROMPT_TOKENS = 3000;
+
+  /**
    * 初始化 Lumen 核心引擎
    */
   async initEngine() {
@@ -43,8 +49,13 @@ class LumenCore {
         gpuLayers: 32,
       });
 
-      // 4. 初始化 RAG 引擎
-      this.rag = new RagEngine(this.database, this.embedding);
+      // 4. 初始化 RAG 引擎（支持可配置的相似度与缓存策略）
+      this.rag = new RagEngine(this.database, this.embedding, {
+        minScore: 0.3,
+        maxDocs: 500,
+        cacheStrategy: "lru",
+        cacheTTL: 1000 * 60 * 60 * 24, // 1 天
+      });
       await this.rag.initialize();
 
       logger.info("Lumen Engine: 系统已就绪", "SYSTEM");
@@ -85,6 +96,45 @@ ${formattedHistory}
 Assistant:`;
   }
 
+  private truncatePrompt(
+    messages: LLMMessage[],
+    contextText: string,
+  ): { messages: LLMMessage[]; contextText: string } {
+    if (!this.llm) {
+      // 如果还没初始化 LLM，就退回到不截断的逻辑（应当不会发生）
+      return { messages, contextText };
+    }
+
+    const maxTokens = LumenCore.MAX_PROMPT_TOKENS;
+    let truncatedMessages = [...messages];
+    let truncatedContext = contextText;
+
+    const render = () =>
+      this.formatLLMMessages(truncatedMessages, truncatedContext);
+
+    const countPromptTokens = (): number => this.llm.countTokens(render());
+
+    // 1. 优先截断历史对话（从最旧条目开始）
+    while (countPromptTokens() > maxTokens && truncatedMessages.length > 0) {
+      truncatedMessages.shift();
+    }
+
+    // 2. 如果仍然超过，则从参考资料前端截断，保留末尾更靠近答案的内容
+    while (countPromptTokens() > maxTokens && truncatedContext.length > 0) {
+      const tokens = this.llm.tokenize(truncatedContext);
+      const removeCount = Math.max(1, Math.ceil(tokens.length * 0.1));
+      truncatedContext = this.llm.detokenize(tokens.slice(removeCount));
+
+      // 3. 若仍然超过，则直接截断为最后 maxTokens 个 token
+      if (countPromptTokens() > maxTokens) {
+        const finalTokens = this.llm.tokenize(render()).slice(-maxTokens);
+        return { messages: [], contextText: this.llm.detokenize(finalTokens) };
+      }
+    }
+
+    return { messages: truncatedMessages, contextText: truncatedContext };
+  }
+
   /**
    * 核心对话方法 (Lumen Chat)
    */
@@ -111,8 +161,10 @@ Assistant:`;
         { role: LLMRole.User, content: question },
       ];
 
-      // 3. 组装最终 Prompt
-      const finalPrompt = this.formatLLMMessages(messages, contextText);
+      // 3. 组装最终 Prompt，并确保不会超过最大长度导致模型 OOM
+      const { messages: safeMessages, contextText: safeContext } =
+        this.truncatePrompt(messages, contextText);
+      const finalPrompt = this.formatLLMMessages(safeMessages, safeContext);
 
       // 4. 生成响应 (Generation)
       let fullResponse = "";
@@ -165,6 +217,5 @@ Assistant:`;
     logger.info("Lumen Engine: 资源已释放", "SYSTEM");
   }
 }
-
 
 export default LumenCore;
