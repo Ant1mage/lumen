@@ -1,0 +1,83 @@
+{
+  "name": "lumen-ai-stock",
+  "version": "1.0.0",
+  "description": "AI-powered stock analysis application with RAG and local LLM",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "dev:electron": "concurrently \"npm run dev:main:webpack\" \"npm run dev:preload:webpack\" \"npm run dev:renderer:webpack\" \"npm run start:electron:dev\"",
+    "dev:webpack": "concurrently \"npm run dev:main:webpack\" \"npm run dev:renderer:webpack\"",
+    "dev:vite": "vite",
+    "dev:main:webpack": "webpack --config config/webpack.main.config.js --watch",
+    "dev:preload:webpack": "webpack --config config/webpack.preload.config.js --watch",
+    "dev:renderer:webpack": "webpack serve --config config/webpack.renderer.config.js",
+    "start:electron:dev": "wait-on dist/main/index.js dist/preload/index.js http://localhost:3001 && RENDERER_URL=http://localhost:3001 electron .",
+    "build:webpack": "npm run build:main:webpack && npm run build:renderer:webpack",
+    "build:main:webpack": "webpack --config config/webpack.main.config.js --mode production",
+    "build:preload:webpack": "webpack --config config/webpack.preload.config.js --mode production",
+    "build:renderer:webpack": "webpack --config config/webpack.renderer.config.js --mode production",
+    "build:vite": "tsc && vite build",
+    "build:electron": "electron-builder",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "electron",
+    "ai",
+    "stock",
+    "llama",
+    "rag"
+  ],
+  "author": "Alexander Z",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.9",
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "concurrently": "^8.2.2",
+    "css-loader": "^6.9.1",
+    "electron": "^28.3.0",
+    "electron-builder": "^24.9.1",
+    "html-webpack-plugin": "^5.6.0",
+    "postcss": "^8.4.33",
+    "postcss-loader": "^8.0.0",
+    "style-loader": "^3.3.4",
+    "tailwindcss": "^3.4.1",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.11",
+    "vite-plugin-electron": "^0.28.2",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1",
+    "wait-on": "^7.2.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "node-llama-cpp": "^2.8.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "build": {
+    "appId": "com.lumen.aistock",
+    "productName": "Lumen AI Stock",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "public/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.finance",
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
