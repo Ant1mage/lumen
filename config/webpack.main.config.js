@@ -15,6 +15,7 @@ module.exports = {
       '@renderer': path.resolve(__dirname, '../src/renderer'),
     },
   },
+  target: 'electron-main',
   module: {
     rules: [
       {
@@ -30,7 +31,9 @@ module.exports = {
   },
   externals: {
     'better-sqlite3': 'commonjs better-sqlite3',
-    // Note: node-llama-cpp is ESM-only; we load it at runtime via dynamic import.
-    // Do not bundle or require it here, otherwise it will fail with ERR_REQUIRE_ESM.
+    // 关键：对于 ESM-only 的原生模块，直接设为 true 或使用特定前缀
+    'node-llama-cpp': 'node-commonjs node-llama-cpp',
+    '@reflink/reflink': 'node-commonjs @reflink/reflink',
+    'ipull': 'node-commonjs ipull'
   },
 };

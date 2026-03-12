@@ -5,7 +5,7 @@ import type {
   LlamaModel,
   LlamaEmbeddingContext,
   Token,
-} from "node-llama-cpp";
+} from "node-llama-cpp" with { "resolution-mode": "import" };
 import * as fs from "fs";
 import { LLMModelConfig } from "./llm_config";
 import { logger } from "../tools/logger";
@@ -24,9 +24,10 @@ class LLMEngine {
       logger.info("正在初始化 Llama 服务...");
 
       // node-llama-cpp is ESM-only; ensure Webpack doesn't try to bundle/require it
-      const { getLlama, LlamaChatSession } = await import(
-        /* webpackIgnore: true */ "node-llama-cpp"
+      const { getLlama, LlamaChatSession } = await eval(
+        'import("node-llama-cpp")',
       );
+
       const llama = await getLlama();
 
       const modelPath = config?.modelPath || "";
@@ -45,7 +46,7 @@ class LLMEngine {
       });
 
       // 2. 初始化推理上下文
-      this.context = await this.model.createContext({
+      this.context = await this.model!.createContext({
         sequences: 1,
         contextSize: config?.contextSize || 4096,
       });
@@ -56,7 +57,7 @@ class LLMEngine {
       });
 
       // 4. 初始化向量上下文 (通用能力)
-      this.embeddingContext = await this.model.createEmbeddingContext();
+      this.embeddingContext = await this.model!.createEmbeddingContext();
 
       this.isInitialized = true;
       logger.info(`Llama 实例初始化完成: ${path.basename(modelPath)}`);
