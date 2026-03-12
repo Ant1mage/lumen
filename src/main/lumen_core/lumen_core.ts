@@ -6,6 +6,7 @@ import DatabaseEngine from "./db/database_engine";
 // 引入封装好的日志服务和类型
 import { LLMRole, LLMMessage } from "./ai/llm_config";
 import { logger } from "./tools/logger";
+import PromptTool from "./tools/prompt_tool";
 
 class LumenCore {
   private database!: DatabaseEngine;
@@ -76,35 +77,13 @@ class LumenCore {
   }
 
   /**
-   * 内部方法：格式化 Prompt 模板
+   * 内部方法：格式化 Prompt 模板（使用 PromptTool）
    */
   private formatLLMMessages(
     messages: LLMMessage[],
     contextText: string,
   ): string {
-    const formattedHistory = messages
-      .map((msg) => {
-        switch (msg.role) {
-          case LLMRole.System:
-            return `System: ${msg.content}`;
-          case LLMRole.User:
-            return `User: ${msg.content}`;
-          case LLMRole.Assistant:
-            return `Assistant: ${msg.content}`;
-          default:
-            return msg.content;
-        }
-      })
-      .join("\n\n");
-
-    return `System: 你是 Lumen，一个聪明、严谨且富有洞察力的 AI 助手。请根据提供的参考资料回答用户的问题。
-
-参考资料:
-${contextText}
-
-${formattedHistory}
-
-Assistant:`;
+    return PromptTool.formatPrompt(messages, contextText);
   }
 
   private truncatePrompt(
