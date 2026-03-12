@@ -118,6 +118,14 @@ class LumenCore {
 
     const countPromptTokens = (): number => this.llm.countTokens(render());
 
+    // 提取最后一条消息（当前用户问题），确保不会被截断
+    const currentQuestion = truncatedMessages.length > 0 
+      ? truncatedMessages[truncatedMessages.length - 1] 
+      : null;
+    if (currentQuestion) {
+      truncatedMessages = truncatedMessages.slice(0, -1);
+    }
+
     // 1. 优先截断历史对话（从最旧条目开始）
     while (countPromptTokens() > maxTokens && truncatedMessages.length > 0) {
       truncatedMessages.shift();
@@ -136,6 +144,11 @@ class LumenCore {
       }
     }
 
+    // 重新添加当前用户问题到末尾
+    if (currentQuestion) {
+      truncatedMessages.push(currentQuestion);
+    }
+
     return { messages: truncatedMessages, contextText: truncatedContext };
   }
 
@@ -151,22 +164,16 @@ class LumenCore {
     logger.chat(LLMRole.User, question);
 
     try {
-      // 持久化用户输入，避免丢失会话记录
-      this.chatHistory.push({ role: LLMRole.User, content: question });
-      await this.persistChatMessage(LLMRole.User, question);
-
       // 1. 检索 (Retrieval)
       const searchStart = Date.now();
       const contexts = await this.rag.search(question, 3);
       logger.perf("RAG Search", Date.now() - searchStart);
 
-      const contextText =
-        contexts.length > 0 ? contexts.join("\n\n") : "未找到相关参考资料。";
-
-      // 2. 构造消息队列
-      const messages: LLMMessage[] = [...this.chatHistory];
+      // 2. 构造消息队列（包含历史对话 + 当前用户问题）
+      const messages: LLMMessage[] = [...this.chatHistory, { role: LLMRole.User, content: question }];
 
       // 3. 组装最终 Prompt，并确保不会超过最大长度导致模型 OOM
+      const contextText = contexts.length > 0 ? contexts.join("\n\n") : "";
       const { messages: safeMessages, contextText: safeContext } =
         this.truncatePrompt(messages, contextText);
       const finalPrompt = this.formatLLMMessages(safeMessages, safeContext);
@@ -178,11 +185,15 @@ class LumenCore {
         onToken(token);
       });
 
+      // 5. 响应成功后，持久化用户输入和 AI 回复
+      this.chatHistory.push({ role: LLMRole.User, content: question });
+      await this.persistChatMessage(LLMRole.User, question);
+      
       logger.chat(LLMRole.Assistant, fullResponse);
       await this.persistChatMessage(LLMRole.Assistant, fullResponse);
       logger.perf("Total Response Time", Date.now() - startTime);
 
-      // 5. 更新上下文 (保持最近 5 轮，即 10 条记录)
+      // 6. 更新上下文 (保持最近 5 轮，即 10 条记录)
       this.chatHistory.push({ role: LLMRole.Assistant, content: fullResponse });
       if (this.chatHistory.length > 10) this.chatHistory.splice(0, 2);
 

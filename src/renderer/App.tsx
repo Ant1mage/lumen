@@ -88,8 +88,6 @@ function App() {
     try {
       // @ts-ignore - window.api 在 preload 中定义
       const result = await window.api.askQuestionStream(message, onToken);
-      // 发送完毕后可以再次拉取历史以确保与后端一致
-      await refreshHistory();
       return result;
     } catch (error) {
       return `回答失败：${error instanceof Error ? error.message : '未知错误'}`;
