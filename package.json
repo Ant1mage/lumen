@@ -17,7 +17,8 @@
     "build:renderer:webpack": "webpack --config config/webpack.renderer.config.js --mode production",
     "build:vite": "tsc && vite build",
     "build:electron": "electron-builder",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:llama": "node scripts/test-llama.mjs"
   },
   "keywords": [
     "electron",
@@ -45,17 +46,19 @@
     "style-loader": "^3.3.4",
     "tailwindcss": "^3.4.1",
     "ts-loader": "^9.5.1",
+    "ts-node": "^10.9.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.11",
     "vite-plugin-electron": "^0.28.2",
+    "wait-on": "^7.2.0",
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^4.15.1",
-    "wait-on": "^7.2.0"
+    "webpack-dev-server": "^4.15.1"
   },
   "dependencies": {
     "better-sqlite3": "^9.4.3",
-    "node-llama-cpp": "^2.8.5",
+    "electron-log": "^5.4.3",
+    "node-llama-cpp": "^3.17.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
