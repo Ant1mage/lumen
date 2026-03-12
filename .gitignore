@@ -29,3 +29,6 @@ models/*.gguf
 *.db
 *.db-shm
 *.db-wal
+
+# lock
+package-lock.json
