@@ -3,7 +3,7 @@ import {
   STORE_CONFIG_CHANNELS,
   VIEW_CHANNELS,
   LUMEN_CORE_CHANNELS
-} from '../main/lumen_core/channels';
+} from '../shared/channels';
 
 // ==================== 1. 系统与配置模块 ====================
 contextBridge.exposeInMainWorld('store_config', {
