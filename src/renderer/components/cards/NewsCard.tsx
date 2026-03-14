@@ -1,120 +1,98 @@
 import React from 'react';
-import { Badge } from '../ui/badge';
+import { cn, formatTime } from '@renderer/lib/utils';
+import type { NewsItem } from '@renderer/types';
 
-// 新闻情感类型
-type Sentiment = 'positive' | 'negative' | 'neutral' | 'warning';
-
-// 关联股票类型
-interface RelatedStock {
-  symbol: string;
-  name: string;
-}
-
-// 新闻卡片组件属性
 interface NewsCardProps {
-  title: string;
-  content: string;
-  timestamp: string;
-  sentiment: Sentiment;
-  relatedStocks?: RelatedStock[];
-  onClick?: () => void;
+  news: NewsItem;
+  className?: string;
+  showTimeLine?: boolean;
 }
 
-// 情感标签映射
-const sentimentConfig: Record<Sentiment, { label: string; variant: any }> = {
-  positive: { label: '利好', variant: 'up' },
-  negative: { label: '利空', variant: 'down' },
-  neutral: { label: '中性', variant: 'neutral' },
-  warning: { label: '预警', variant: 'warning' },
+// 情绪标签配置
+const sentimentConfig = {
+  positive: {
+    label: '利好',
+    className: 'border-up text-up hover:bg-up/10',
+  },
+  negative: {
+    label: '利空',
+    className: 'border-down text-down hover:bg-down/10',
+  },
+  neutral: {
+    label: '中性',
+    className: 'border-neutral text-neutral hover:bg-neutral/10',
+  },
+  warning: {
+    label: '预警',
+    className: 'border-warning text-warning hover:bg-warning/10',
+  },
 };
 
-export const NewsCard: React.FC<NewsCardProps> = ({ 
-  title, 
-  content, 
-  timestamp, 
-  sentiment, 
-  relatedStocks = [],
-  onClick 
+/**
+ * 新闻卡片组件
+ * 垂直时间线结构，包含标题、时间、情绪标签和关联股票
+ */
+export const NewsCard: React.FC<NewsCardProps> = ({
+  news,
+  className,
+  showTimeLine = true,
 }) => {
-  const { label, variant } = sentimentConfig[sentiment];
-
+  const sentiment = sentimentConfig[news.sentiment];
+  
   return (
-    <div 
-      className="p-4 rounded-lg border hover-card cursor-pointer transition-all duration-200 group"
-      onClick={onClick}
+    <div
+      className={cn(
+        'group relative flex flex-col gap-2 rounded-lg border bg-card p-3',
+        'transition-all duration-200 hover:bg-accent hover:text-accent-foreground',
+        'cursor-pointer',
+        className
+      )}
     >
-      {/* 标题 */}
-      <h3 className="text-sm font-medium text-foreground leading-snug mb-2 group-hover:text-primary transition-colors">
-        {title}
-      </h3>
-      
-      {/* 内容摘要 */}
-      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-        {content}
-      </p>
-      
-      {/* 底部信息栏 */}
-      <div className="flex items-center justify-between">
-        {/* 时间戳 */}
-        <div className="text-xs font-mono text-muted-foreground">
-          {timestamp}
+      {/* 时间线指示器（可选） */}
+      {showTimeLine && (
+        <div className="absolute -left-6 top-6 flex size-3 items-center justify-center">
+          <div className="size-2 rounded-full bg-border group-hover:bg-primary" />
         </div>
-        
-        {/* 标签栏 */}
-        <div className="flex items-center gap-2">
-          {/* 情感标签 */}
-          <Badge variant={variant} className="text-xs px-2 py-0.5">
-            {label}
-          </Badge>
-          
-          {/* 关联股票 */}
-          {relatedStocks.length > 0 && (
-            <div className="flex gap-1">
-              {relatedStocks.slice(0, 3).map((stock, index) => (
-                <span 
-                  key={index}
-                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
-                >
-                  {stock.symbol}
-                </span>
-              ))}
-              {relatedStocks.length > 3 && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground">
-                  +{relatedStocks.length - 3}
-                </span>
-              )}
-            </div>
+      )}
+      
+      {/* 头部：标题和时间 */}
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="text-sm font-medium leading-snug">{news.title}</h3>
+        <time
+          className="shrink-0 font-mono text-xs text-muted-foreground"
+          dateTime={news.publishTime}
+        >
+          {formatTime(news.publishTime)}
+        </time>
+      </div>
+      
+      {/* 底部标签栏 */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* 情绪标签 */}
+        <span
+          className={cn(
+            'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium',
+            'transition-colors hover:scale-105',
+            sentiment.className
           )}
-        </div>
+        >
+          {sentiment.label}
+        </span>
+        
+        {/* 关联股票胶囊 */}
+        {news.relatedStocks.map((stock) => (
+          <span
+            key={stock}
+            className={cn(
+              'inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-mono',
+              'transition-all hover:bg-accent hover:text-accent-foreground',
+              'cursor-default'
+            )}
+          >
+            ${stock}
+          </span>
+        ))}
       </div>
     </div>
   );
 };
-
-// 时间线容器组件
-interface NewsTimelineProps {
-  newsItems: NewsCardProps[];
-  className?: string;
-}
-
-export const NewsTimeline: React.FC<NewsTimelineProps> = ({ 
-  newsItems, 
-  className = '' 
-}) => {
-  return (
-    <div className={`space-y-4 ${className}`}>
-      {newsItems.map((item, index) => (
-        <div key={index} className="relative pl-6">
-          {/* 时间线指示器 */}
-          <div className="absolute left-0 top-6 w-4 h-0.5 bg-border"></div>
-          <div className="absolute left-0 top-4 w-2 h-2 rounded-full bg-primary"></div>
-          
-          <NewsCard {...item} />
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// 默认导出 NewsCard
-export default NewsCard;

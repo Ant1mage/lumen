@@ -38,21 +38,21 @@ module.exports = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        // 语义化颜色 - 符合设计文档要求
+        // 语义化颜色 - 符合设计文档要求（使用 CSS 变量）
         up: {
-          DEFAULT: '#10b981', // Emerald-500
+          DEFAULT: 'hsl(var(--up))',
           foreground: '#ffffff',
         },
         down: {
-          DEFAULT: '#f43f5e', // Rose-500
+          DEFAULT: 'hsl(var(--down))',
           foreground: '#ffffff',
         },
         neutral: {
-          DEFAULT: '#3b82f6', // Blue-500
+          DEFAULT: 'hsl(var(--neutral))',
           foreground: '#ffffff',
         },
         warning: {
-          DEFAULT: '#f97316', // Orange-500
+          DEFAULT: 'hsl(var(--warning))',
           foreground: '#ffffff',
         },
       },

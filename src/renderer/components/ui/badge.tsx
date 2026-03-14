@@ -1,29 +1,27 @@
-import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
-
-import { cn } from "../../lib/utils";
+import * as React from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@renderer/lib/utils';
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
   {
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+          'border-transparent bg-primary text-primary-foreground hover:bg-primary/80',
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
-        // 语义化变体 - 符合设计文档要求
-        up: "border-transparent bg-up text-up-foreground",
-        down: "border-transparent bg-down text-down-foreground",
-        neutral: "border-transparent bg-neutral text-neutral-foreground",
-        warning: "border-transparent bg-warning text-warning-foreground",
+          'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
+        outline: 'text-foreground',
+        up: 'border-transparent bg-up/10 text-up hover:bg-up/20',
+        down: 'border-transparent bg-down/10 text-down hover:bg-down/20',
+        neutral: 'border-transparent bg-neutral/10 text-neutral hover:bg-neutral/20',
+        warning: 'border-transparent bg-warning/10 text-warning hover:bg-warning/20',
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: 'default',
     },
   }
 );

@@ -1,64 +1,185 @@
-"use client";
+import * as React from 'react';
+import { GripVertical } from 'lucide-react';
+import { cn } from '@renderer/lib/utils';
 
-import { DragHandleDots2Icon } from "@radix-ui/react-icons";
-
-import { cn } from "../../lib/utils";
-
-// 动态导入 react-resizable-panels 以避免 ESM/CJS 冲突
-let ResizablePrimitive: any;
-
-if (typeof window !== 'undefined') {
-  import('react-resizable-panels').then(module => {
-    ResizablePrimitive = module;
-  });
+// 使用简化的可调整面板实现
+interface PanelGroupProps {
+  children: React.ReactNode;
+  direction: 'horizontal' | 'vertical';
+  className?: string;
 }
 
-const ResizablePanelGroup = ({
-  className,
-  ...props
-}: React.ComponentProps<any>) => {
-  if (!ResizablePrimitive) return null;
-  
+interface PanelProps {
+  children: React.ReactNode;
+  defaultSize?: number;
+  minSize?: number;
+  maxSize?: number;
+  className?: string;
+}
+
+interface PanelResizeHandleProps {
+  className?: string;
+  withHandle?: boolean;
+}
+
+export const ResizablePanelGroup: React.FC<PanelGroupProps> = ({
+  children,
+  direction,
+  className
+}) => {
   return (
-    <ResizablePrimitive.Group
+    <div
       className={cn(
-        "flex h-full w-full data-[panel-group-direction=vertical]:flex-col",
+        'flex h-full w-full',
+        direction === 'horizontal' ? 'flex-row' : 'flex-col',
         className
       )}
-      {...props}
-    />
+    >
+      {children}
+    </div>
   );
 };
 
-const ResizablePanel = (props: any) => {
-  if (!ResizablePrimitive) return null;
-  return <ResizablePrimitive.Panel {...props} />;
+export const ResizablePanel: React.FC<PanelProps> = ({
+  children,
+  defaultSize = 50,
+  minSize = 10,
+  className
+}) => {
+  const [size, setSize] = React.useState(defaultSize);
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const isResizing = React.useRef(false);
+  const startPos = React.useRef(0);
+  const startSize = React.useRef(0);
+  const direction = 'horizontal'; // 简化实现，暂时只支持水平方向
+
+  React.useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current || !panelRef.current?.parentElement) return;
+
+      const parent = panelRef.current.parentElement;
+      const delta = e.clientX - startPos.current;
+      const parentSize = direction === 'horizontal' ? parent.clientWidth : parent.clientHeight;
+      const deltaPercent = (delta / parentSize) * 100;
+
+      let newSize = startSize.current + deltaPercent;
+      newSize = Math.max(minSize, Math.min(newSize, 100));
+
+      setSize(newSize);
+    };
+
+    const handleMouseUp = () => {
+      isResizing.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    if (isResizing.current) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // 这个函数会被 resize handle 调用
+  };
+
+  return (
+    <div
+      ref={panelRef}
+      className={cn('overflow-auto', className)}
+      style={{ flex: `1 1 ${size}%`, minWidth: `${minSize}%` }}
+    >
+      {children}
+    </div>
+  );
 };
 
-const ResizableHandle = ({
-  withHandle,
+export const ResizableHandle: React.FC<PanelResizeHandleProps & { direction?: 'horizontal' | 'vertical' }> = ({
   className,
-  ...props
-}: React.ComponentProps<any> & {
-  withHandle?: boolean;
+  withHandle = true,
+  direction = 'horizontal'
 }) => {
-  if (!ResizablePrimitive) return null;
-  
+  const handleRef = React.useRef<HTMLDivElement>(null);
+  const isResizing = React.useRef(false);
+  const startPos = React.useRef(0);
+
+  React.useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!handleRef.current?.parentElement) return;
+
+      const parent = handleRef.current.parentElement;
+      const prevSibling = parent.firstElementChild as HTMLElement;
+      const nextSibling = parent.lastElementChild as HTMLElement;
+
+      if (!prevSibling || !nextSibling) return;
+
+      const delta = e.clientX - startPos.current;
+      const parentSize = parent.clientWidth;
+      const deltaPercent = (delta / parentSize) * 100;
+
+      const prevStyle = window.getComputedStyle(prevSibling);
+      const prevWidth = parseFloat(prevStyle.width) || prevSibling.clientWidth;
+      const prevWidthPercent = (prevWidth / parentSize) * 100;
+
+      const newPrevWidth = prevWidthPercent + deltaPercent;
+      prevSibling.style.flex = `0 0 ${newPrevWidth}%`;
+    };
+
+    const handleMouseUp = () => {
+      isResizing.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      handleRef.current?.classList.remove('bg-primary', 'opacity-100');
+      handleRef.current?.classList.add('bg-border');
+    };
+
+    if (isResizing.current) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizing.current = true;
+    startPos.current = e.clientX;
+    document.body.style.cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize';
+    document.body.style.userSelect = 'none';
+    handleRef.current?.classList.remove('bg-border');
+    handleRef.current?.classList.add('bg-primary', 'opacity-100');
+  };
+
   return (
-    <ResizablePrimitive.Separator
+    <div
+      ref={handleRef}
+      onMouseDown={handleMouseDown}
       className={cn(
-        "relative flex w-px items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 data-[panel-group-direction=vertical]:h-px data-[panel-group-direction=vertical]:w-full data-[panel-group-direction=vertical]:after:left-0 data-[panel-group-direction=vertical]:after:h-1 data-[panel-group-direction=vertical]:after:w-full data-[panel-group-direction=vertical]:after:-translate-y-1/2 data-[panel-group-direction=vertical]:after:translate-x-0 [&[data-panel-group-direction=vertical]>div]:rotate-90",
+        'flex items-center justify-center bg-border',
+        'hover:bg-primary/50 transition-colors cursor-col-resize',
+        'w-2 relative z-10',
         className
       )}
-      {...props}
     >
       {withHandle && (
-        <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border">
-          <DragHandleDots2Icon className="h-2.5 w-2.5" />
-        </div>
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
       )}
-    </ResizablePrimitive.Separator>
+    </div>
   );
 };
 
-export { ResizablePanelGroup, ResizablePanel, ResizableHandle };
+// 类型定义
+export type ImperativePanelHandle = HTMLDivElement;
+
+// 也导出原始名称以兼容现有代码
+export { ResizablePanelGroup as PanelGroup, ResizablePanel as Panel, ResizableHandle as PanelResizeHandle };
