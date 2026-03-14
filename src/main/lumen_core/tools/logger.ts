@@ -2,7 +2,7 @@ import log from "electron-log/main";
 import path from "path";
 import * as fs from "fs";
 import { app } from "electron";
-import { LLMRole } from "../ai/llm-config";
+import { LLMRole } from "../../shared/types";
 
 // 1. 深度配置日志文件路径
 log.transports.file.resolvePathFn = (variables) => {

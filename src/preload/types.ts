@@ -14,9 +14,8 @@ export interface StoreConfigAPI {
     progress?: string;
   }
 
-  // 引入共享的 ChatMessage 类型
-  import { ChatMessage as SharedChatMessage } from '../shared/types';
-  export type ChatMessage = SharedChatMessage;
+  // 重新导出共享的 ChatMessage 类型
+  export type { ChatMessage } from '../shared/types';
 
   export interface LumenCoreAPI {
     onStateChange: (listener: (state: LumenCoreState) => void) => () => void;
