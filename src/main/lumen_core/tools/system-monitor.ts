@@ -20,7 +20,7 @@ export type MachineType =
 
 export class SystemMonitor {
   private static instance: SystemMonitor;
-  private systemInfo: SystemInfo | null = null;
+  private _systemInfo: SystemInfo | null = null;
 
   private constructor() {}
 
@@ -35,8 +35,8 @@ export class SystemMonitor {
    * 获取系统信息（带缓存）
    */
   async getSystemInfo(): Promise<SystemInfo> {
-    if (this.systemInfo) {
-      return this.systemInfo;
+    if (this._systemInfo) {
+      return this._systemInfo;
     }
 
     try {
@@ -111,7 +111,7 @@ export class SystemMonitor {
         machineType = "unknown";
       }
 
-      this.systemInfo = {
+      this._systemInfo = {
         platform,
         arch,
         cpuCores,
@@ -125,7 +125,7 @@ export class SystemMonitor {
         "SYSTEM"
       );
 
-      return this.systemInfo;
+      return this._systemInfo;
     } catch (error) {
       logger.error("获取系统信息失败", error);
       
@@ -263,7 +263,7 @@ export class SystemMonitor {
    * 清除缓存的系统信息（用于重新检测）
    */
   clearCache(): void {
-    this.systemInfo = null;
+    this._systemInfo = null;
     logger.info("系统信息缓存已清除", "SYSTEM");
   }
 }

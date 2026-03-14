@@ -1,4 +1,4 @@
-import { LLMRole, LLMMessage } from "../ai/llm_config";
+import { LLMRole, LLMMessage } from "../ai/llm-config";
 
 /**
  * Prompt 工具类：负责构建和格式化系统提示

@@ -69,3 +69,23 @@ coverage/
 *.d.ts
 *.map
 electron-builder.yml
+
+# 设计稿和临时文档
+lumen_design/
+*.png
+
+# 开发脚本
+rebuild.sh
+
+# Bun 相关 (可选)
+bun.lockb
+.bun-version
+
+# 测试文件
+__tests__/
+*.test.ts
+*.spec.ts
+
+# 本地配置文件
+*.local.*
+.local/

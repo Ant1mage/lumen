@@ -7,19 +7,19 @@ import type {
   Token,
 } from "node-llama-cpp" with { "resolution-mode": "import" };
 import * as fs from "fs";
-import { LLMModelConfig } from "./llm_config";
+import { LLMModelConfig } from "./llm-config";
 import { logger } from "../tools/logger";
 
 class LLMEngine {
-  private model: LlamaModel | null = null;
-  private context: LlamaContext | null = null;
-  private session: LlamaChatSession | null = null;
-  private embeddingContext: LlamaEmbeddingContext | null = null;
-  private isInitialized: boolean = false;
-  private config: LLMModelConfig = {}; // 保存当前配置
+  private _model: LlamaModel | null = null;
+  private _context: LlamaContext | null = null;
+  private _session: LlamaChatSession | null = null;
+  private _embeddingContext: LlamaEmbeddingContext | null = null;
+  private _isInitialized: boolean = false;
+  private _config: LLMModelConfig = {}; // 保存当前配置
 
   async initialize(config?: LLMModelConfig): Promise<void> {
-    if (this.isInitialized) return;
+    if (this._isInitialized) return;
 
     try {
       logger.info("正在初始化 Llama 服务...");
@@ -35,7 +35,7 @@ class LLMEngine {
       const desiredGpuLayers = config?.gpuLayers ?? 0;
 
       // 保存配置供后续使用
-      this.config = config || {};
+      this._config = config || {};
 
       if (!fs.existsSync(modelPath)) {
         throw new Error(`模型文件不存在：${modelPath}`);
@@ -45,26 +45,26 @@ class LLMEngine {
 
       // 1. 加载模型
       // 注意：某些 GGUF 模型的 vocab 可能缺少 newline token，node-llama-cpp 会自动处理
-      this.model = await llama.loadModel({
+      this._model = await llama.loadModel({
         modelPath,
         gpuLayers: desiredGpuLayers,
       });
 
       // 2. 初始化推理上下文
-      this.context = await this.model!.createContext({
+      this._context = await this._model!.createContext({
         sequences: 1,
         contextSize: config?.contextSize || 4096,
       });
 
       // 3. 初始化会话
-      this.session = new LlamaChatSession({
-        contextSequence: this.context.getSequence(),
+      this._session = new LlamaChatSession({
+        contextSequence: this._context.getSequence(),
       });
 
       // 4. 初始化向量上下文 (通用能力)
-      this.embeddingContext = await this.model!.createEmbeddingContext();
+      this._embeddingContext = await this._model!.createEmbeddingContext();
 
-      this.isInitialized = true;
+      this._isInitialized = true;
       logger.info(`Llama 实例初始化完成: ${path.basename(modelPath)}`);
     } catch (error) {
       logger.error("Llama 服务初始化失败:", error);
@@ -83,14 +83,14 @@ class LLMEngine {
       topP?: number;
     },
   ): Promise<string> {
-    if (!this.isInitialized || !this.session) {
+    if (!this._isInitialized || !this._session) {
       throw new Error("Llama 服务未初始化");
     }
 
-    return await this.session.prompt(prompt, {
+    return await this._session.prompt(prompt, {
       maxTokens: options?.maxTokens || 512,
-      temperature: options?.temperature ?? this.config.temperature ?? 0.7,
-      topP: options?.topP ?? this.config.topP ?? 0.9,
+      temperature: options?.temperature ?? this._config.temperature ?? 0.7,
+      topP: options?.topP ?? this._config.topP ?? 0.9,
     });
   }
 
@@ -106,19 +106,19 @@ class LLMEngine {
       topP?: number;
     },
   ): Promise<string> {
-    if (!this.isInitialized || !this.session) {
+    if (!this._isInitialized || !this._session) {
       throw new Error("Llama 服务未初始化");
     }
 
     let fullResponse = "";
 
-    await this.session.prompt(prompt, {
+    await this._session.prompt(prompt, {
       maxTokens: options?.maxTokens || 4096,
-      temperature: options?.temperature ?? this.config.temperature ?? 0.7,
-      topP: options?.topP ?? this.config.topP ?? 0.9,
+      temperature: options?.temperature ?? this._config.temperature ?? 0.7,
+      topP: options?.topP ?? this._config.topP ?? 0.9,
       onToken: (tokens) => {
         // 解码并传出 token
-        const tokenText = this.model!.detokenize(tokens);
+        const tokenText = this._model!.detokenize(tokens);
         fullResponse += tokenText;
         onToken(tokenText);
       },
@@ -131,11 +131,11 @@ class LLMEngine {
    * 向量化
    */
   async embed(text: string): Promise<number[]> {
-    if (!this.isInitialized || !this.embeddingContext) {
+    if (!this._isInitialized || !this._embeddingContext) {
       throw new Error("Llama 服务未初始化或不支持向量化");
     }
 
-    const embedding = await this.embeddingContext.getEmbeddingFor(text);
+    const embedding = await this._embeddingContext.getEmbeddingFor(text);
     return Array.from(embedding.vector);
   }
 
@@ -143,63 +143,63 @@ class LLMEngine {
    * 直接访问模型 tokenizer 进行 token 计数。
    */
   countTokens(text: string): number {
-    if (!this.isInitialized || !this.model) {
+    if (!this._isInitialized || !this._model) {
       throw new Error("Llama 服务未初始化");
     }
-    return this.model.tokenize(text).length;
+    return this._model.tokenize(text).length;
   }
 
   /**
    * 通过模型 tokenizer 将文本拆成 token 列表。
    */
   tokenize(text: string): Token[] {
-    if (!this.isInitialized || !this.model) {
+    if (!this._isInitialized || !this._model) {
       throw new Error("Llama 服务未初始化");
     }
-    return this.model.tokenize(text);
+    return this._model.tokenize(text);
   }
 
   /**
    * 通过模型 detokenize 将 token 列表还原为文本。
    */
   detokenize(tokens: readonly Token[]): string {
-    if (!this.isInitialized || !this.model) {
+    if (!this._isInitialized || !this._model) {
       throw new Error("Llama 服务未初始化");
     }
-    return this.model.detokenize(tokens);
+    return this._model.detokenize(tokens);
   }
 
   async dispose(): Promise<void> {
     // 释放所有 llama-cpp 资源（按照生命周期依赖顺序）
     try {
-      await this.session?.dispose();
+      await this._session?.dispose();
     } catch (error) {
       logger.error("释放 Llama 会话失败", error);
     }
 
     try {
-      await this.embeddingContext?.dispose();
+      await this._embeddingContext?.dispose();
     } catch (error) {
       logger.error("释放 Embedding 上下文失败", error);
     }
 
     try {
-      await this.context?.dispose();
+      await this._context?.dispose();
     } catch (error) {
       logger.error("释放推理上下文失败", error);
     }
 
     try {
-      await this.model?.dispose();
+      await this._model?.dispose();
     } catch (error) {
       logger.error("释放模型失败", error);
     }
 
-    this.session = null;
-    this.embeddingContext = null;
-    this.context = null;
-    this.model = null;
-    this.isInitialized = false;
+    this._session = null;
+    this._embeddingContext = null;
+    this._context = null;
+    this._model = null;
+    this._isInitialized = false;
   }
 }
 

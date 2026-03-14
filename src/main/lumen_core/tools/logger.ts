@@ -2,7 +2,7 @@ import log from "electron-log/main";
 import path from "path";
 import * as fs from "fs";
 import { app } from "electron";
-import { LLMRole } from "../ai/llm_config";
+import { LLMRole } from "../ai/llm-config";
 
 // 1. 深度配置日志文件路径
 log.transports.file.resolvePathFn = (variables) => {
@@ -85,6 +85,10 @@ class LoggerService {
 
   info(message: string, context: string = "CORE") {
     log.info(`[${context}] ${message}`);
+  }
+
+  warn(message: string, context: string = "CORE") {
+    log.warn(`[${context}] ${message}`);
   }
 
   chat(role: LLMRole, content: string) {
