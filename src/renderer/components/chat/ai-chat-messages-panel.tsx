@@ -3,10 +3,17 @@
 import { Sparkles, User } from "lucide-react"
 import { ScrollArea } from "@renderer/components/ui/scroll-area"
 import { cn } from "@renderer/tools/utils"
-import { ChatMessage } from "@shared/types"
+import { LLMMessage, LLMRole } from "@shared/types"
+
+// 渲染层扩展的消息类型（带 UI 元数据）
+interface UIMessage extends LLMMessage {
+    id: string
+    time: string
+    isStreaming?: boolean
+}
 
 interface AIChatMessagesPanelProps {
-    messages: ChatMessage[]
+    messages: UIMessage[]
     isLoaded: boolean
 }
 
@@ -38,16 +45,16 @@ export function AIChatMessagesPanel({ messages, isLoaded }: AIChatMessagesPanelP
 
                             <div className={cn(
                                 "max-w-[80%] space-y-1",
-                                message.role === "user" ? "items-end" : ""
+                                message.role === LLMRole.User ? "items-end" : ""
                             )}>
                                 <div className={cn(
                                     "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                                    message.role === "assistant"
+                                    message.role === LLMRole.Assistant
                                         ? "rounded-tl-sm bg-secondary text-foreground"
                                         : "rounded-tr-sm bg-primary text-primary-foreground"
                                 )}>
                                     {/* AI 消息且正在流式传输时显示三个点 */}
-                                    {message.role === "assistant" && message.isStreaming && message.content === "" ? (
+                                    {message.role === LLMRole.Assistant && message.isStreaming && message.content === "" ? (
                                         <div className="flex items-center gap-1.5 h-5">
                                             <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground typing-dot-1" />
                                             <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground typing-dot-2" />

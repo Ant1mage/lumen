@@ -24,22 +24,6 @@ contextBridge.exposeInMainWorld('lumen_core', {
       ipcRenderer.removeListener(channel, handler);
     };
   },
-  sendMessage: (content: string) => {
-    return new Promise((resolve) => {
-      ipcRenderer.invoke(LUMEN_CORE_CHANNELS.SEND_MESSAGE, content)
-        .then((result) => resolve(result))
-        .catch((error) => resolve({ success: false, error: String(error) }));
-    });
-  },
-  onToken: (listener: (token: string) => void) => {
-    const channel = 'lumen-core-token';
-    const handler = (_event: any, token: string) => listener(token);
-    ipcRenderer.on(channel, handler);
-    return () => {
-      ipcRenderer.removeListener(channel, handler);
-    };
-  },
-  reinitialize: () => ipcRenderer.invoke(LUMEN_CORE_CHANNELS.REINITIALIZE),
 });
 
 // ==================== 3. 视图模块 ====================

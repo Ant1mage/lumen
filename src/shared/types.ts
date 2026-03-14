@@ -20,15 +20,3 @@ export interface LLMMessage {
   role: LLMRole;
   content: string;
 }
-
-/**
- * Chat 消息接口（带 UI 元数据）
- * 用于渲染层展示完整的聊天消息
- */
-export interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  time: string;
-  isStreaming?: boolean;
-}

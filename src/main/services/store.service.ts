@@ -4,7 +4,7 @@ import {
   SidebarNavItemKey,
   LanguageCode,
   DEFAULT_SETTINGS
-} from '../shared/user-settings'
+} from '../lumen_core/user-settings'
 
 /**
  * StoreService - 配置存储服务
