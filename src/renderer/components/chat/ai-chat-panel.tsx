@@ -6,18 +6,11 @@ import { AIChatMessagesPanel } from "./ai-chat-messages-panel"
 import { AIChatInputPanel } from "./ai-chat-input-panel"
 import { Button } from "@renderer/components/ui/button"
 import { useTranslation } from "react-i18next"
-
-interface Message {
-    id: string
-    role: "user" | "assistant"
-    content: string
-    time: string
-    isStreaming?: boolean
-}
+import { ChatMessage } from "@shared/types"
 
 export function AIChatPanel() {
     const { t } = useTranslation()
-    const [messages, setMessages] = useState<Message[]>([])
+    const [messages, setMessages] = useState<ChatMessage[]>([])
     const [isStreaming, setIsStreaming] = useState(false)
     const [isLoaded, setIsLoaded] = useState(false)
     const [avatarStage, setAvatarStage] = useState<'normal' | 'enlarge' | 'shrink'>('normal')
@@ -65,7 +58,7 @@ export function AIChatPanel() {
         if (!window.lumen_core || isStreaming) return
 
         // 添加用户消息
-        const userMessage: Message = {
+        const userMessage: ChatMessage = {
             id: Date.now().toString(),
             role: "user",
             content,
@@ -77,7 +70,7 @@ export function AIChatPanel() {
 
         // 创建 AI 消息占位符
         const aiMessageId = (Date.now() + 1).toString()
-        const aiMessage: Message = {
+        const aiMessage: ChatMessage = {
             id: aiMessageId,
             role: "assistant",
             content: "",  // 空内容，等待流式响应

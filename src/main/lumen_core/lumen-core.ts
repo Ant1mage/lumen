@@ -4,7 +4,7 @@ import RagEngine from "./rag/rag-engine";
 import LLMPath from "./ai/llm-path";
 import DatabaseEngine from "./db/database-engine";
 // 引入规范化的日志服务和类型
-import { LLMRole, LLMMessage } from "./ai/llm-config";
+import { LLMRole, LLMMessage } from "../../shared/types";
 import { logger } from "./tools/logger";
 import PromptTool from "./tools/prompt-tool";
 import { systemMonitor } from "./tools/system-monitor";

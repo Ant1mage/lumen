@@ -3,17 +3,10 @@
 import { Sparkles, User } from "lucide-react"
 import { ScrollArea } from "@renderer/components/ui/scroll-area"
 import { cn } from "@renderer/tools/utils"
-
-interface Message {
-    id: string
-    role: "user" | "assistant"
-    content: string
-    time: string
-    isStreaming?: boolean
-}
+import { ChatMessage } from "@shared/types"
 
 interface AIChatMessagesPanelProps {
-    messages: Message[]
+    messages: ChatMessage[]
     isLoaded: boolean
 }
 

@@ -14,13 +14,9 @@ export interface StoreConfigAPI {
     progress?: string;
   }
 
-  // LumenCore 消息类型（与主进程保持一致）
-  export interface ChatMessage {
-    id: string
-    role: 'user' | 'assistant'
-    content: string
-    time: string
-  }
+  // 引入共享的 ChatMessage 类型
+  import { ChatMessage as SharedChatMessage } from '../shared/types';
+  export type ChatMessage = SharedChatMessage;
 
   export interface LumenCoreAPI {
     onStateChange: (listener: (state: LumenCoreState) => void) => () => void;
