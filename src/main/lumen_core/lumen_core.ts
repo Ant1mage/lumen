@@ -9,6 +9,20 @@ import { logger } from "./tools/logger";
 import PromptTool from "./tools/prompt_tool";
 import { systemMonitor } from "./tools/system_monitor";
 
+export enum LumenCoreStatus {
+  Idle = "idle",
+  Initializing = "initializing",
+  Ready = "ready",
+  Error = "error",
+  Disposing = "disposing",
+}
+
+export interface LumenCoreState {
+  status: LumenCoreStatus;
+  error?: string;
+  progress?: string;
+}
+
 class LumenCore {
   private database!: DatabaseEngine;
   private embedding!: LLMEngine; // 专门负责向量化的 BGE-M3
@@ -25,6 +39,11 @@ class LumenCore {
   // 使用规范化的 LLMMessage 类型管理对话历史
   private chatHistory: LLMMessage[] = [];
 
+  // 状态管理
+  private status: LumenCoreStatus = LumenCoreStatus.Idle;
+  private statusListeners: Set<(state: LumenCoreState) => void> = new Set();
+  private initError?: string;
+
   /**
    * 最大 Prompt Token 数（基于模型 tokenizer 计算），超过则截断最旧的对话历史和参考资料。
    * 这个值需要小于模型 contextSize（如 3000），预留一些空间给系统提示。
@@ -32,9 +51,51 @@ class LumenCore {
   private static readonly MAX_PROMPT_TOKENS = 3000;
 
   /**
+   * 获取当前状态
+   */
+  getState(): LumenCoreState {
+    return {
+      status: this.status,
+      error: this.initError,
+    };
+  }
+
+  /**
+   * 订阅状态变化
+   */
+  onStateChange(listener: (state: LumenCoreState) => void): () => void {
+    this.statusListeners.add(listener);
+    return () => this.statusListeners.delete(listener);
+  }
+
+  private setStatus(
+    status: LumenCoreStatus,
+    progress?: string,
+    error?: string,
+  ) {
+    this.status = status;
+    this.initError = error;
+    const state: LumenCoreState = { status, progress, error };
+    this.statusListeners.forEach((listener) => {
+      try {
+        listener(state);
+      } catch (e) {
+        logger.error("状态监听器执行失败", e);
+      }
+    });
+  }
+
+  /**
    * 初始化 Lumen 核心引擎
    */
   async initEngine() {
+    if (this.status === LumenCoreStatus.Initializing) {
+      logger.warn("Lumen Engine: 初始化正在进行中，请勿重复调用", "SYSTEM");
+      return;
+    }
+
+    this.setStatus(LumenCoreStatus.Initializing, "正在启动...");
+
     try {
       // 启动时自动清理 7 天前的旧日志
       logger.pruneOldLogs(7);
@@ -43,11 +104,12 @@ class LumenCore {
       // 0. 检测系统信息并获取推荐参数
       const systemInfo = await systemMonitor.getSystemInfo();
       const llmParams = await systemMonitor.getRecommendedLLMParams();
-      const embeddingParams = await systemMonitor.getRecommendedEmbeddingParams();
-      
+      const embeddingParams =
+        await systemMonitor.getRecommendedEmbeddingParams();
+
       logger.info(
         `根据机型 (${systemInfo.machineType}) 自动配置参数：GPU Layers=${llmParams.gpuLayers}, Context=${llmParams.contextSize}`,
-        "SYSTEM"
+        "SYSTEM",
       );
 
       // 1. 初始化本地数据库
@@ -84,9 +146,13 @@ class LumenCore {
       });
       await this.rag.initialize();
 
+      this.setStatus(LumenCoreStatus.Ready, "系统已就绪");
       logger.info("Lumen Engine: 系统已就绪", "SYSTEM");
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.setStatus(LumenCoreStatus.Error, undefined, errorMsg);
       logger.error("Lumen Engine: 初始化失败", error);
+      throw error;
     }
   }
 
@@ -119,9 +185,10 @@ class LumenCore {
     const countPromptTokens = (): number => this.llm.countTokens(render());
 
     // 提取最后一条消息（当前用户问题），确保不会被截断
-    const currentQuestion = truncatedMessages.length > 0 
-      ? truncatedMessages[truncatedMessages.length - 1] 
-      : null;
+    const currentQuestion =
+      truncatedMessages.length > 0
+        ? truncatedMessages[truncatedMessages.length - 1]
+        : null;
     if (currentQuestion) {
       truncatedMessages = truncatedMessages.slice(0, -1);
     }
@@ -170,7 +237,10 @@ class LumenCore {
       logger.perf("RAG Search", Date.now() - searchStart);
 
       // 2. 构造消息队列（包含历史对话 + 当前用户问题）
-      const messages: LLMMessage[] = [...this.chatHistory, { role: LLMRole.User, content: question }];
+      const messages: LLMMessage[] = [
+        ...this.chatHistory,
+        { role: LLMRole.User, content: question },
+      ];
 
       // 3. 组装最终 Prompt，并确保不会超过最大长度导致模型 OOM
       const contextText = contexts.length > 0 ? contexts.join("\n\n") : "";
@@ -186,14 +256,14 @@ class LumenCore {
       });
 
       // 5. 响应成功后，持久化用户输入和 AI 回复
-      this.chatHistory.push({ role: LLMRole.User, content: question });
-      await this.persistChatMessage(LLMRole.User, question);
-      
+      // 注意：messages 已经包含了当前问题，这里只需持久化 AI 回复
       logger.chat(LLMRole.Assistant, fullResponse);
       await this.persistChatMessage(LLMRole.Assistant, fullResponse);
       logger.perf("Total Response Time", Date.now() - startTime);
 
       // 6. 更新上下文 (保持最近 5 轮，即 10 条记录)
+      // 先添加用户消息（它已经在 messages 中，但未添加到 chatHistory）
+      this.chatHistory.push({ role: LLMRole.User, content: question });
       this.chatHistory.push({ role: LLMRole.Assistant, content: fullResponse });
       if (this.chatHistory.length > 10) this.chatHistory.splice(0, 2);
 
@@ -360,11 +430,18 @@ class LumenCore {
    * 彻底释放资源
    */
   async dispose() {
-    await this.llm?.dispose();
-    await this.embedding?.dispose();
-    this.chatHistory = [];
-    await this.database?.close();
-    logger.info("Lumen Engine: 资源已释放", "SYSTEM");
+    this.setStatus(LumenCoreStatus.Disposing, "正在释放资源...");
+    try {
+      await this.llm?.dispose();
+      await this.embedding?.dispose();
+      this.chatHistory = [];
+      await this.database?.close();
+      this.setStatus(LumenCoreStatus.Idle);
+      logger.info("Lumen Engine: 资源已释放", "SYSTEM");
+    } catch (error) {
+      this.setStatus(LumenCoreStatus.Error, undefined, String(error));
+      throw error;
+    }
   }
 }
 

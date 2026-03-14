@@ -1,8 +1,8 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
+import type { LumenCoreState } from "../main/lumen_core/lumen_core";
 
 // 暴露安全的 API 给渲染进程
 contextBridge.exposeInMainWorld("api", {
-  analyzeStock: (symbol: string) => ipcRenderer.invoke("query-stock", symbol),
   addDocument: (content: string) => ipcRenderer.invoke("add-document", content),
   askQuestion: (question: string) =>
     ipcRenderer.invoke("ask-question", question),
@@ -12,7 +12,7 @@ contextBridge.exposeInMainWorld("api", {
   ) => {
     const sessionId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-    const listener = (_event: any, token: string) => {
+    const listener = (_event: IpcRendererEvent, token: string) => {
       onToken(token);
     };
 
@@ -42,4 +42,12 @@ contextBridge.exposeInMainWorld("api", {
     contextSize?: number | null;
   }) => ipcRenderer.invoke("set-models", options),
   isReady: () => ipcRenderer.invoke("is-ready"),
+  getLumenState: () => ipcRenderer.invoke("get-lumen-state"),
+  onLumenStateChange: (callback: (state: LumenCoreState) => void) => {
+    const listener = (_event: IpcRendererEvent, state: LumenCoreState) => {
+      callback(state);
+    };
+    ipcRenderer.on("lumen-state-change", listener);
+    return () => ipcRenderer.removeListener("lumen-state-change", listener);
+  },
 });

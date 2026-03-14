@@ -43,8 +43,14 @@ class RagEngine {
 
   async initialize(): Promise<void> {
     // 只加载最新的 maxDocs 条记录，防止内存过大
+    // 按 ID 降序获取，确保最新的文档优先加载
     const docs = this.db.getAllDocuments(this.maxDocs);
     const now = Date.now();
+
+    // 清空现有缓存，确保与数据库同步
+    this.documents.clear();
+    this.cacheOrder = [];
+    this.cacheTimestamps.clear();
 
     for (const doc of docs) {
       if (!doc.id) continue;
@@ -54,6 +60,7 @@ class RagEngine {
         embedding: doc.embedding ? JSON.parse(doc.embedding) : [],
         metadata: doc.metadata ? JSON.parse(doc.metadata) : undefined,
       });
+      // 保持 ID 升序，确保 LRU/FIFO 正确性
       this.cacheOrder.push(doc.id);
       this.cacheTimestamps.set(doc.id, now);
     }
@@ -61,7 +68,17 @@ class RagEngine {
     this.evictExpired();
     this.evictIfNeeded();
 
-    logger.info(`RagEngine: 已加载 ${this.documents.size} 条本地索引`);
+    logger.info(
+      `RagEngine: 已加载 ${this.documents.size} 条本地索引（限制: ${this.maxDocs}）`,
+    );
+  }
+
+  /**
+   * 重新加载缓存（用于模型切换后同步）
+   */
+  async reload(): Promise<void> {
+    logger.info("RagEngine: 重新加载缓存...");
+    await this.initialize();
   }
 
   private evictExpired() {
@@ -99,7 +116,10 @@ class RagEngine {
   }
 
   // 只负责存：生成向量并存库
-  async addDocument(content: string, metadata?: Record<string, any>) {
+  async addDocument(
+    content: string,
+    metadata?: Record<string, any>,
+  ): Promise<RAGDocument> {
     const embedding = await this.embeddingEngine.embed(content);
     const id = this.db.insertDocument({
       content,
@@ -108,15 +128,30 @@ class RagEngine {
       created_at: new Date().toISOString(),
     });
 
-    const newDoc = { id, content, embedding, metadata };
+    const newDoc: RAGDocument = { id, content, embedding, metadata };
+
+    // 检查是否需要先清理空间（在添加新文档前）
+    if (this.documents.size >= this.maxDocs) {
+      this.evictExpired();
+      this.evictIfNeeded();
+    }
+
     this.documents.set(id, newDoc);
     this.cacheOrder.push(id);
     this.cacheTimestamps.set(id, Date.now());
 
-    this.evictExpired();
-    this.evictIfNeeded();
-
     return newDoc;
+  }
+
+  /**
+   * 获取缓存统计信息
+   */
+  getCacheStats(): { size: number; maxSize: number; strategy: string } {
+    return {
+      size: this.documents.size,
+      maxSize: this.maxDocs,
+      strategy: this.cacheStrategy,
+    };
   }
 
   // 只负责查：输入问题，返回相似文档片段

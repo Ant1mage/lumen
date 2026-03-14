@@ -87,6 +87,10 @@ class LoggerService {
     log.info(`[${context}] ${message}`);
   }
 
+  warn(message: string, context: string = "CORE") {
+    log.warn(`[${context}] ${message}`);
+  }
+
   chat(role: LLMRole, content: string) {
     const label = role.toUpperCase();
     const abstract =

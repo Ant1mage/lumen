@@ -1,10 +1,11 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import path from "path";
-import LumenCore from "./lumen_core/lumen_core";
+import LumenCore, { LumenCoreState } from "./lumen_core/lumen_core";
 
 let mainWindow: BrowserWindow | null = null;
 let lumenCore: LumenCore | null = null;
 let lumenReady = false;
+let unsubscribeStateChange: (() => void) | null = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -34,6 +35,7 @@ function createWindow() {
 }
 
 function cleanup() {
+  unsubscribeStateChange?.();
   if (lumenCore) {
     void lumenCore.dispose();
   }
@@ -41,9 +43,15 @@ function cleanup() {
 
 async function initializeServices() {
   lumenCore = new LumenCore();
+
+  // 订阅状态变化，通知渲染进程
+  unsubscribeStateChange = lumenCore.onStateChange((state: LumenCoreState) => {
+    lumenReady = state.status === "ready";
+    mainWindow?.webContents.send("lumen-state-change", state);
+  });
+
   try {
     await lumenCore.initEngine();
-    lumenReady = true;
   } catch (error) {
     console.error("Lumen Engine 初始化失败:", error);
   }
@@ -53,9 +61,13 @@ ipcMain.handle("is-ready", async () => {
   return lumenReady;
 });
 
+ipcMain.handle("get-lumen-state", async () => {
+  return lumenCore?.getState() ?? { status: "idle" };
+});
+
 ipcMain.handle("ask-question", async (_event, question: string) => {
   if (!lumenCore || !lumenReady) {
-    return "模型正在加载中，请稍候再试...";
+    throw new Error("模型正在加载中，请稍候再试...");
   }
 
   let response = "";
@@ -69,7 +81,9 @@ ipcMain.handle(
   "ask-question-stream",
   async (event, question: string, sessionId: string = "default") => {
     if (!lumenCore || !lumenReady) {
-      return "模型正在加载中，请稍候再试...";
+      const error = "模型正在加载中，请稍候再试...";
+      event.sender.send(`chat-token-${sessionId}`, error);
+      throw new Error(error);
     }
 
     let response = "";
