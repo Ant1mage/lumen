@@ -92,8 +92,8 @@ export function AIChatPanel() {
             // 监听 token 流式响应
             const unsubscribeToken = window.lumen_core.onToken((token) => {
                 // 收到第一个 token 时，取消 isStreaming 状态
-                setMessages(prev => prev.map(msg => 
-                    msg.id === aiMessageId 
+                setMessages(prev => prev.map(msg =>
+                    msg.id === aiMessageId
                         ? { ...msg, content: msg.content + token, isStreaming: false }
                         : msg
                 ))
@@ -164,10 +164,6 @@ export function AIChatPanel() {
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-4">
                 <h2 className="text-xl font-semibold text-foreground">{t('chat_panel.title')}</h2>
-                <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                </span>
             </div>
 
             {/* Messages */}

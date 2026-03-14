@@ -20,6 +20,9 @@
       ],
       "@preload/*": [
         "./src/preload/*"
+      ],
+      "@shared/*": [
+        "./src/shared/*"
       ]
     },
     /* 模块兼容性 */

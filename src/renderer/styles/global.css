@@ -259,10 +259,13 @@
 
 /* AI 生成中 - 三个点闪烁动画 */
 @keyframes typing-dot {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 0.3;
         transform: scale(0.8);
     }
+
     50% {
         opacity: 1;
         transform: scale(1);
