@@ -9,6 +9,7 @@ interface Message {
     role: "user" | "assistant"
     content: string
     time: string
+    isStreaming?: boolean
 }
 
 interface AIChatMessagesPanelProps {
@@ -52,11 +53,21 @@ export function AIChatMessagesPanel({ messages, isLoaded }: AIChatMessagesPanelP
                                         ? "rounded-tl-sm bg-secondary text-foreground"
                                         : "rounded-tr-sm bg-primary text-primary-foreground"
                                 )}>
-                                    {message.content.split("\n").map((line, i) => (
-                                        <p key={i} className={i > 0 ? "mt-2" : ""}>
-                                            {line}
-                                        </p>
-                                    ))}
+                                    {/* AI 消息且正在流式传输时显示三个点 */}
+                                    {message.role === "assistant" && message.isStreaming && message.content === "" ? (
+                                        <div className="flex items-center gap-1.5 h-5">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground typing-dot-1" />
+                                            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground typing-dot-2" />
+                                            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground typing-dot-3" />
+                                        </div>
+                                    ) : (
+                                        // 正常渲染消息内容
+                                        message.content.split("\n").map((line, i) => (
+                                            <p key={i} className={i > 0 ? "mt-2" : ""}>
+                                                {line}
+                                            </p>
+                                        ))
+                                    )}
                                 </div>
                                 <span className={cn(
                                     "block text-[10px] text-muted-foreground",

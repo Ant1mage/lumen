@@ -12,6 +12,7 @@ interface Message {
     role: "user" | "assistant"
     content: string
     time: string
+    isStreaming?: boolean
 }
 
 export function AIChatPanel() {
@@ -79,8 +80,9 @@ export function AIChatPanel() {
         const aiMessage: Message = {
             id: aiMessageId,
             role: "assistant",
-            content: "",
-            time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })
+            content: "",  // 空内容，等待流式响应
+            time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+            isStreaming: true  // 标记为正在生成
         }
 
         // 先添加空消息占位
@@ -89,9 +91,10 @@ export function AIChatPanel() {
         try {
             // 监听 token 流式响应
             const unsubscribeToken = window.lumen_core.onToken((token) => {
-                setMessages(prev => prev.map(msg =>
-                    msg.id === aiMessageId
-                        ? { ...msg, content: msg.content + token }
+                // 收到第一个 token 时，取消 isStreaming 状态
+                setMessages(prev => prev.map(msg => 
+                    msg.id === aiMessageId 
+                        ? { ...msg, content: msg.content + token, isStreaming: false }
                         : msg
                 ))
             })

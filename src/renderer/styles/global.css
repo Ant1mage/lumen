@@ -256,3 +256,30 @@
     display: none;
     /* Chrome, Safari and Opera */
 }
+
+/* AI 生成中 - 三个点闪烁动画 */
+@keyframes typing-dot {
+    0%, 100% {
+        opacity: 0.3;
+        transform: scale(0.8);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.typing-dot-1 {
+    animation: typing-dot 1.4s infinite;
+    animation-delay: 0s;
+}
+
+.typing-dot-2 {
+    animation: typing-dot 1.4s infinite;
+    animation-delay: 0.2s;
+}
+
+.typing-dot-3 {
+    animation: typing-dot 1.4s infinite;
+    animation-delay: 0.4s;
+}
