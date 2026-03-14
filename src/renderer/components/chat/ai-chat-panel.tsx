@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from "react"
+import { Sparkles } from "lucide-react"
 import { AIChatMessagesPanel } from "./ai-chat-messages-panel"
 import { AIChatInputPanel } from "./ai-chat-input-panel"
+import { Button } from "@renderer/components/ui/button"
 import { useTranslation } from "react-i18next"
 
 interface Message {
@@ -15,26 +17,39 @@ interface Message {
 export function AIChatPanel() {
     const { t } = useTranslation()
     const [messages, setMessages] = useState<Message[]>([])
-    const [lumenCoreState, setLumenCoreState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
     const [isStreaming, setIsStreaming] = useState(false)
+    const [isLoaded, setIsLoaded] = useState(false)
+    const [avatarStage, setAvatarStage] = useState<'normal' | 'enlarge' | 'shrink'>('normal')
+    const [containerOpacity, setContainerOpacity] = useState(1)
 
     // 启动时加载 LumenCore
     useEffect(() => {
         if (window.lumen_core) {
-            setLumenCoreState('loading')
-
             const unsubscribe = window.lumen_core.onStateChange((state) => {
                 console.log('AIChatPanel: LumenCore 状态变化', state)
 
                 switch (state.status) {
                     case 'initializing':
-                        setLumenCoreState('loading')
                         break
                     case 'ready':
-                        setLumenCoreState('ready')
+                        // 加载成功：先放大到 1.5x，然后缩小到 0
+                        setTimeout(() => {
+                            setAvatarStage('enlarge')
+                        }, 50)
+
+                        setTimeout(() => {
+                            setAvatarStage('shrink')
+                        }, 350)
+
+                        setTimeout(() => {
+                            setContainerOpacity(0)
+                        }, 1400)
+
+                        setTimeout(() => {
+                            setIsLoaded(true)
+                        }, 2450)
                         break
                     case 'error':
-                        setLumenCoreState('error')
                         break
                 }
             })
@@ -113,27 +128,35 @@ export function AIChatPanel() {
         // TODO: Implement quick action logic
     }
 
-    const handleRetryLoad = async () => {
-        console.log('AIChatPanel: 重试加载 LumenCore')
-        setLumenCoreState('loading')
-
-        try {
-            if (window.lumen_core?.reinitialize) {
-                const result = await window.lumen_core.reinitialize()
-                if (!result.success) {
-                    throw new Error(result.error)
-                }
-            } else {
-                throw new Error('lumen_core.reinitialize not available')
-            }
-        } catch (error) {
-            console.error('AIChatPanel: 重试失败', error)
-            setLumenCoreState('error')
-        }
-    }
-
     return (
-        <div className="flex h-full flex-col bg-card">
+        <div className="relative flex h-full flex-col bg-card">
+            {/* Loading Container - 覆盖整个 Chat Panel */}
+            {!isLoaded && (
+                <div
+                    className="absolute inset-0 z-10 flex items-center justify-center bg-card transition-opacity duration-1000 ease-out"
+                    style={{ opacity: containerOpacity }}
+                >
+                    <div className="flex flex-col items-center space-y-6">
+                        {/* Avatar Logo - 使用绿色 (primary) */}
+                        <div
+                            className={`transition-all ${avatarStage === 'enlarge' ? 'animate-loading-enlarge' :
+                                avatarStage === 'shrink' ? 'animate-loading-shrink' :
+                                    ''
+                                }`}
+                        >
+                            <Sparkles className="h-32 w-32 text-primary" />
+                        </div>
+
+                        {/* Status Text */}
+                        {!isLoaded && (
+                            <p className="text-center text-sm font-medium text-muted-foreground">
+                                {t('splash.initializing')}
+                            </p>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-4">
                 <h2 className="text-xl font-semibold text-foreground">{t('chat_panel.title')}</h2>
@@ -146,8 +169,7 @@ export function AIChatPanel() {
             {/* Messages */}
             <AIChatMessagesPanel
                 messages={messages}
-                lumenCoreState={lumenCoreState}
-                onRetryLoad={handleRetryLoad}
+                isLoaded={isLoaded}
             />
 
             {/* Input & Actions */}
