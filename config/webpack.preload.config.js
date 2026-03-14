@@ -12,6 +12,7 @@ module.exports = {
     extensions: ['.ts', '.js'],
     alias: {
       '@preload': path.resolve(__dirname, '../src/preload'),
+      '@shared': path.resolve(__dirname, '../src/shared'),
     },
   },
   module: {
