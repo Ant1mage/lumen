@@ -1,14 +1,14 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
+import { registerIpcHandlers } from './ipc/handlers';
 
 let mainWindow: BrowserWindow | null = null;
-
 const isDev = process.env.RENDERER_URL;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1600,
+    height: 900,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       nodeIntegration: false,
@@ -30,8 +30,11 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createWindow();
+
+  // 注册所有 IPC 处理程序
+  registerIpcHandlers();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
