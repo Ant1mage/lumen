@@ -1,13 +1,13 @@
 import path from "path";
-import LLMEngine from "./ai/llm-engine";
-import RagEngine from "./rag/rag-engine";
-import LLMPath from "./ai/llm-path";
-import DatabaseEngine from "./db/database-engine";
+import LLMEngine from "@main/lumen_core/ai/llm-engine";
+import RagEngine from "@main/lumen_core/rag/rag-engine";
+import LLMPath from "@main/lumen_core/ai/llm-path";
+import DatabaseEngine from "@main/lumen_core/db/database-engine";
 // 引入规范化的日志服务和类型
-import { LLMRole, LLMMessage } from "../../shared/types";
-import { logger } from "./tools/logger";
-import PromptTool from "./tools/prompt-tool";
-import { systemMonitor } from "./tools/system-monitor";
+import { LLMRole, LLMMessage } from "@shared/types";
+import { logger } from "@main/lumen_core/tools/logger";
+import PromptTool from "@main/lumen_core/tools/prompt-tool";
+import { systemMonitor } from "@main/lumen_core/tools/system-monitor";
 
 export enum LumenCoreStatus {
   Idle = "idle",

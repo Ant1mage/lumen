@@ -5,9 +5,9 @@
  */
 
 import { ipcMain } from 'electron';
-import { STORE_CONFIG_CHANNELS, VIEW_CHANNELS, LUMEN_CORE_CHANNELS } from '../shared/channels';
-import { StoreService } from '../services/store.service';
-import { LumenCoreService } from '../services/lumen-core.service';
+import { STORE_CONFIG_CHANNELS, VIEW_CHANNELS, LUMEN_CORE_CHANNELS } from '@shared/channels';
+import { StoreService } from '@main/services/store.service';
+import { LumenCoreService } from '@main/services/lumen-core.service';
 
 const storeService = StoreService.getInstance();
 

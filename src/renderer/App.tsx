@@ -1,7 +1,7 @@
 import { AIChatPanel } from "@renderer/components/chat/ai-chat-panel";
 import { AppSidebarPanel } from "@renderer/components/sidebar/app-sidebar-panel";
 import { NewsFeedPanel } from "@renderer/components/news/news-feed-panel";
-import { StockPanel } from "./components/stock/stock-panel";
+import { StockPanel } from "@renderer/components/stock/stock-panel";
 import { useEffect, useState } from "react";
 import i18n from "@renderer/config/i18n";
 

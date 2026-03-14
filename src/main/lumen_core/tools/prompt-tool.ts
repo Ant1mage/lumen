@@ -1,4 +1,4 @@
-import { LLMRole, LLMMessage } from "../../shared/types";
+import { LLMRole, LLMMessage } from "@shared/types";
 
 /**
  * Prompt 工具类：负责构建和格式化系统提示

@@ -1,6 +1,6 @@
-import LumenCore, { LumenCoreState } from '../lumen_core/lumen-core';
+import LumenCore, { LumenCoreState } from '@main/lumen_core/lumen-core';
 import { BrowserWindow, ipcMain } from 'electron';
-import { LUMEN_CORE_CHANNELS } from '../shared/channels';
+import { LUMEN_CORE_CHANNELS } from '@shared/channels';
 
 /**
  * LumenCore 状态管理服务

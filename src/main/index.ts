@@ -1,8 +1,8 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
-import { registerIpcHandlers } from './ipc/handlers';
-import LumenCore from './lumen_core/lumen-core';
-import { LumenCoreService } from './services/lumen-core.service';
+import { registerIpcHandlers } from '@main/ipc/handlers';
+import LumenCore from '@main/lumen_core/lumen-core';
+import { LumenCoreService } from '@main/services/lumen-core.service';
 
 let mainWindow: BrowserWindow | null = null;
 let lumenCore: LumenCore | null = null;

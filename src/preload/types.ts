@@ -15,7 +15,7 @@ export interface StoreConfigAPI {
   }
 
   // 重新导出共享的 LLM 类型
-  export type { LLMMessage, LLMRole } from '../shared/types';
+  export type { LLMMessage, LLMRole } from '@shared/types';
 
   export interface LumenCoreAPI {
     onStateChange: (listener: (state: LumenCoreState) => void) => () => void;
