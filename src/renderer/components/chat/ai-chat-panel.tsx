@@ -21,7 +21,6 @@ export function AIChatPanel() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
   const [avatarStage, setAvatarStage] = useState<'normal' | 'enlarge' | 'shrink'>('normal')
-  const [containerOpacity, setContainerOpacity] = useState(1)
 
   // 启动时加载 LumenCore
   useEffect(() => {
@@ -43,12 +42,8 @@ export function AIChatPanel() {
             }, 350)
 
             setTimeout(() => {
-              setContainerOpacity(0)
-            }, 1400)
-
-            setTimeout(() => {
               setIsLoaded(true)
-            }, 2450)
+            }, 1400)
             break
           case 'error':
             break
@@ -135,10 +130,7 @@ export function AIChatPanel() {
     <div className="relative flex h-full flex-col bg-card">
       {/* Loading Container - 覆盖整个 Chat Panel */}
       {!isLoaded && (
-        <div
-          className="absolute inset-0 z-10 flex items-center justify-center bg-card transition-opacity duration-1000 ease-out"
-          style={{ opacity: containerOpacity }}
-        >
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-card">
           <div className="flex flex-col items-center space-y-6">
             {/* Avatar Logo - 使用绿色 (primary) */}
             <div
@@ -151,12 +143,14 @@ export function AIChatPanel() {
               <Sparkles className="h-32 w-32 text-primary" />
             </div>
 
-            {/* Status Text */}
-            {!isLoaded && (
-              <p className="text-center text-sm font-medium text-muted-foreground">
-                {t('splash.initializing')}
-              </p>
-            )}
+            {/* Status Text - 与 Logo 同步动画 */}
+            <p className={`text-center text-sm font-medium text-muted-foreground transition-all ${avatarStage === 'enlarge' ? 'animate-loading-enlarge' :
+                avatarStage === 'shrink' ? 'animate-loading-shrink' :
+                  !isLoaded ? 'animate-pulse-fast' :
+                    ''
+              }`}>
+              {t('splash.initializing')}
+            </p>
           </div>
         </div>
       )}
