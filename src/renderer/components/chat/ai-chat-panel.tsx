@@ -141,7 +141,8 @@ export function AIChatPanel() {
                         <div
                             className={`transition-all ${avatarStage === 'enlarge' ? 'animate-loading-enlarge' :
                                 avatarStage === 'shrink' ? 'animate-loading-shrink' :
-                                    ''
+                                    !isLoaded ? 'animate-pulse-fast' :
+                                        ''
                                 }`}
                         >
                             <Sparkles className="h-32 w-32 text-primary" />
