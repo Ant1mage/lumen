@@ -72,6 +72,7 @@ const zhCN = {
     
     // AI 聊天面板
     chat_panel: {
+      title: '分析',
       quick_actions: {
         market_overview: '市场概览',
         stock_diagnosis: '个股诊断',
@@ -79,6 +80,24 @@ const zhCN = {
       },
       input_placeholder: '输入您的问题...',
       ai_loading: '感谢您的提问！我正在为您分析相关数据，请稍候...'
+    },
+    
+    // 启动页
+    splash: {
+      initializing: '正在初始化...',
+      ready: '准备就绪',
+      error: '初始化失败',
+      retry: '重新加载',
+      retrying: '正在重试...'
+    },
+    
+    // LumenCore 状态
+    lumen_status: {
+      idle: '空闲',
+      initializing: '正在初始化...',
+      ready: '已就绪',
+      error: '错误',
+      disposing: '正在释放资源...'
     }
   }
 };
@@ -153,6 +172,7 @@ const enUS = {
     
     // AI 聊天面板
     chat_panel: {
+      title: 'Chat',
       quick_actions: {
         market_overview: 'Market Overview',
         stock_diagnosis: 'Stock Diagnosis',
@@ -160,6 +180,24 @@ const enUS = {
       },
       input_placeholder: 'Enter your question...',
       ai_loading: 'Thank you for your question! I\'m analyzing the relevant data for you, please wait...'
+    },
+    
+    // 启动页
+    splash: {
+      initializing: 'Initializing...',
+      ready: 'Ready',
+      error: 'Initialization failed',
+      retry: 'Reload',
+      retrying: 'Retrying...'
+    },
+    
+    // LumenCore 状态
+    lumen_status: {
+      idle: 'Idle',
+      initializing: 'Initializing...',
+      ready: 'Ready',
+      error: 'Error',
+      disposing: 'Disposing...'
     }
   }
 };

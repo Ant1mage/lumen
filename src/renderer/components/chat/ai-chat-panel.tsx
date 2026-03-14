@@ -1,10 +1,8 @@
 'use client'
 
-import { useState } from "react"
-import { Send, Sparkles, User, LineChart, TrendingUp, BarChart3 } from "lucide-react"
-import { Button } from "@renderer/components/ui/button"
-import { ScrollArea } from "@renderer/components/ui/scroll-area"
-import { cn } from "@renderer/tools/utils"
+import { useState, useEffect } from "react"
+import { AIChatMessagesPanel } from "./ai-chat-messages-panel"
+import { AIChatInputPanel } from "./ai-chat-input-panel"
 import { useTranslation } from "react-i18next"
 
 interface Message {
@@ -14,152 +12,149 @@ interface Message {
     time: string
 }
 
-const initialMessages: Message[] = [
-    {
-        id: "1",
-        role: "assistant",
-        content: "", // Will be set by translation
-        time: "18:40"
-    },
-    {
-        id: "2",
-        role: "user",
-        content: "", // Will be set by translation
-        time: "18:42"
-    },
-    {
-        id: "3",
-        role: "assistant",
-        content: "", // Will be set by translation
-        time: "18:43"
-    }
-]
-
-const quickActions = [
-    { label: "market_overview", icon: LineChart },
-    { label: "stock_diagnosis", icon: BarChart3 },
-    { label: "trend_analysis", icon: TrendingUp }
-]
-
 export function AIChatPanel() {
     const { t } = useTranslation()
     const [messages, setMessages] = useState<Message[]>([])
-    const [input, setInput] = useState("")
+    const [lumenCoreState, setLumenCoreState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+    const [isStreaming, setIsStreaming] = useState(false)
 
-    const handleSend = () => {
-        if (!input.trim()) return
+    // 启动时加载 LumenCore
+    useEffect(() => {
+        if (window.lumen_core) {
+            setLumenCoreState('loading')
 
-        const newMessage: Message = {
+            const unsubscribe = window.lumen_core.onStateChange((state) => {
+                console.log('AIChatPanel: LumenCore 状态变化', state)
+
+                switch (state.status) {
+                    case 'initializing':
+                        setLumenCoreState('loading')
+                        break
+                    case 'ready':
+                        setLumenCoreState('ready')
+                        break
+                    case 'error':
+                        setLumenCoreState('error')
+                        break
+                }
+            })
+
+            return () => unsubscribe()
+        } else {
+            console.warn('AIChatPanel: window.lumen_core not available')
+        }
+    }, [])
+
+    const handleSendMessage = async (content: string) => {
+        if (!window.lumen_core || isStreaming) return
+
+        // 添加用户消息
+        const userMessage: Message = {
             id: Date.now().toString(),
             role: "user",
-            content: input,
+            content,
             time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })
         }
 
-        setMessages([...messages, newMessage])
-        setInput("")
+        setMessages(prev => [...prev, userMessage])
+        setIsStreaming(true)
 
-        // Simulate AI response
-        setTimeout(() => {
-            const aiResponse: Message = {
-                id: (Date.now() + 1).toString(),
-                role: "assistant",
-                content: t('chat_panel.ai_loading'),
-                time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })
+        // 创建 AI 消息占位符
+        const aiMessageId = (Date.now() + 1).toString()
+        const aiMessage: Message = {
+            id: aiMessageId,
+            role: "assistant",
+            content: "",
+            time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })
+        }
+
+        // 先添加空消息占位
+        setMessages(prev => [...prev, aiMessage])
+
+        try {
+            // 监听 token 流式响应
+            const unsubscribeToken = window.lumen_core.onToken((token) => {
+                setMessages(prev => prev.map(msg =>
+                    msg.id === aiMessageId
+                        ? { ...msg, content: msg.content + token }
+                        : msg
+                ))
+            })
+
+            // 发送消息
+            const result = await window.lumen_core.sendMessage(content)
+
+            if (!result.success) {
+                console.error('发送消息失败:', result.error)
+                // 在 AI 消息中显示错误
+                setMessages(prev => prev.map(msg =>
+                    msg.id === aiMessageId
+                        ? { ...msg, content: `Error: ${result.error}` }
+                        : msg
+                ))
             }
-            setMessages(prev => [...prev, aiResponse])
-        }, 1000)
+
+            // 清理 token 监听器
+            unsubscribeToken()
+        } catch (error) {
+            console.error('消息发送异常:', error)
+            setMessages(prev => prev.map(msg =>
+                msg.id === aiMessageId
+                    ? { ...msg, content: `Error: ${String(error)}` }
+                    : msg
+            ))
+        } finally {
+            setIsStreaming(false)
+        }
+    }
+
+    const handleQuickAction = (action: string) => {
+        console.log('Quick action clicked:', action)
+        // TODO: Implement quick action logic
+    }
+
+    const handleRetryLoad = async () => {
+        console.log('AIChatPanel: 重试加载 LumenCore')
+        setLumenCoreState('loading')
+
+        try {
+            if (window.lumen_core?.reinitialize) {
+                const result = await window.lumen_core.reinitialize()
+                if (!result.success) {
+                    throw new Error(result.error)
+                }
+            } else {
+                throw new Error('lumen_core.reinitialize not available')
+            }
+        } catch (error) {
+            console.error('AIChatPanel: 重试失败', error)
+            setLumenCoreState('error')
+        }
     }
 
     return (
         <div className="flex h-full flex-col bg-card">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-4">
+                <h2 className="text-xl font-semibold text-foreground">{t('chat_panel.title')}</h2>
+                <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                </span>
+            </div>
+
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
-                <div className="space-y-4">
-                    {messages.map((message) => (
-                        <div
-                            key={message.id}
-                            className={cn(
-                                "flex gap-3",
-                                message.role === "user" ? "flex-row-reverse" : ""
-                            )}
-                        >
-                            <div className={cn(
-                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-                                message.role === "assistant"
-                                    ? "bg-primary/10"
-                                    : "bg-accent/10"
-                            )}>
-                                {message.role === "assistant" ? (
-                                    <Sparkles className="h-4 w-4 text-primary" />
-                                ) : (
-                                    <User className="h-4 w-4 text-accent" />
-                                )}
-                            </div>
+            <AIChatMessagesPanel
+                messages={messages}
+                lumenCoreState={lumenCoreState}
+                onRetryLoad={handleRetryLoad}
+            />
 
-                            <div className={cn(
-                                "max-w-[80%] space-y-1",
-                                message.role === "user" ? "items-end" : ""
-                            )}>
-                                <div className={cn(
-                                    "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                                    message.role === "assistant"
-                                        ? "rounded-tl-sm bg-secondary text-foreground"
-                                        : "rounded-tr-sm bg-primary text-primary-foreground"
-                                )}>
-                                    {message.content.split("\n").map((line, i) => (
-                                        <p key={i} className={i > 0 ? "mt-2" : ""}>
-                                            {line}
-                                        </p>
-                                    ))}
-                                </div>
-                                <span className={cn(
-                                    "block text-[10px] text-muted-foreground",
-                                    message.role === "user" ? "text-right" : ""
-                                )}>
-                                    {message.time}
-                                </span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </ScrollArea>
-
-            {/* Quick Actions */}
-            <div className="flex gap-2 px-4 py-3">
-                {quickActions.map((action) => (
-                    <Button
-                        key={action.label}
-                        variant="outline"
-                        size="sm"
-                        className="h-8 gap-1.5 rounded-full border-border/50 bg-secondary/50 text-xs hover:bg-secondary hover:text-foreground"
-                    >
-                        <action.icon className="h-3 w-3" />
-                        {t(`chat_panel.quick_actions.${action.label}`)}
-                    </Button>
-                ))}
-            </div>
-
-            {/* Input */}
-            <div className="px-4 pb-4">
-                <div className="flex items-center gap-2 rounded-2xl bg-secondary/50 px-4 py-2.5">
-                    <input
-                        type="text"
-                        placeholder={t('chat_panel.input_placeholder')}
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                        className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-                    />
-                    <Button
-                        size="icon"
-                        className="h-8 w-8 shrink-0 rounded-full bg-primary hover:bg-primary/90"
-                        onClick={handleSend}
-                    >
-                        <Send className="h-4 w-4" />
-                    </Button>
-                </div>
-            </div>
+            {/* Input & Actions */}
+            <AIChatInputPanel
+                onSendMessage={handleSendMessage}
+                onQuickAction={handleQuickAction}
+            />
         </div>
     )
 }

@@ -71,14 +71,14 @@ export function NewsFeedPanel() {
     return (
         <div className="flex h-full flex-col">
             <div className="flex items-center justify-between px-4 py-4">
-                <h2 className="text-sm font-semibold text-foreground">{t('news_panel.title')}</h2>
+                <h2 className="text-xl font-semibold text-foreground">{t('news_panel.title')}</h2>
                 <span className="relative flex h-2 w-2">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
                 </span>
             </div>
 
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1" style={{ minHeight: 0 }}>
                 <div className="space-y-1 px-3 pb-3">
                     {newsData.map((news) => (
                         <div

@@ -7,13 +7,35 @@ export interface StoreConfigAPI {
     getUserSettings: () => Promise<any>;
   }
   
-  // --- 2. 界面与交互状态模块 ---
+  // --- 2. LumenCore 状态监听模块 ---
+  export interface LumenCoreState {
+    status: 'idle' | 'initializing' | 'ready' | 'error' | 'disposing';
+    error?: string;
+    progress?: string;
+  }
+
+  // LumenCore 消息类型（与主进程保持一致）
+  export interface ChatMessage {
+    id: string
+    role: 'user' | 'assistant'
+    content: string
+    time: string
+  }
+
+  export interface LumenCoreAPI {
+    onStateChange: (listener: (state: LumenCoreState) => void) => () => void;
+    sendMessage: (content: string) => Promise<{ success: boolean; error?: string }>;
+    onToken: (listener: (token: string) => void) => () => void;
+    reinitialize: () => Promise<{ success: boolean; error?: string }>;
+  }
+
+  // --- 3. 界面与交互状态模块 ---
   export interface ViewAPI {
     getSidebarChoose: () => Promise<string>;
     setSidebarChoose: (key: string) => Promise<void>;
   }
   
-  // --- 3. 基础通信模块 (可选，用于通用场景) ---
+  // --- 4. 基础通信模块 (可选，用于通用场景) ---
   export interface CoreAPI {
     send: (channel: string, data?: any) => void;
     receive: (channel: string, func: (...args: any[]) => void) => void;
@@ -24,6 +46,7 @@ export interface StoreConfigAPI {
     interface Window {
       // 挂载到各自的命名空间下
       store_config: StoreConfigAPI;
+      lumen_core: LumenCoreAPI;
       view: ViewAPI;
       core: CoreAPI;
     }

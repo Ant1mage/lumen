@@ -1,7 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import {
   STORE_CONFIG_CHANNELS,
-  VIEW_CHANNELS
+  VIEW_CHANNELS,
+  LUMEN_CORE_CHANNELS
 } from '../main/shared/channels';
 
 // ==================== 1. 系统与配置模块 ====================
@@ -13,7 +14,35 @@ contextBridge.exposeInMainWorld('store_config', {
   getUserSettings: () => ipcRenderer.invoke(STORE_CONFIG_CHANNELS.SETTINGS.GET_USER),
 });
 
-// ==================== 2. 视图模块 ====================
+// ==================== 2. LumenCore 状态监听模块 ====================
+contextBridge.exposeInMainWorld('lumen_core', {
+  onStateChange: (listener: (state: any) => void) => {
+    const channel = LUMEN_CORE_CHANNELS.STATE_CHANGE;
+    const handler = (_event: any, state: any) => listener(state);
+    ipcRenderer.on(channel, handler);
+    return () => {
+      ipcRenderer.removeListener(channel, handler);
+    };
+  },
+  sendMessage: (content: string) => {
+    return new Promise((resolve) => {
+      ipcRenderer.invoke(LUMEN_CORE_CHANNELS.SEND_MESSAGE, content)
+        .then((result) => resolve(result))
+        .catch((error) => resolve({ success: false, error: String(error) }));
+    });
+  },
+  onToken: (listener: (token: string) => void) => {
+    const channel = 'lumen-core-token';
+    const handler = (_event: any, token: string) => listener(token);
+    ipcRenderer.on(channel, handler);
+    return () => {
+      ipcRenderer.removeListener(channel, handler);
+    };
+  },
+  reinitialize: () => ipcRenderer.invoke(LUMEN_CORE_CHANNELS.REINITIALIZE),
+});
+
+// ==================== 3. 视图模块 ====================
 contextBridge.exposeInMainWorld('view', {
   getSidebarChoose: () => ipcRenderer.invoke(VIEW_CHANNELS.SIDEBAR.GET_CHOOSE),
   setSidebarChoose: (key: string) => ipcRenderer.invoke(VIEW_CHANNELS.SIDEBAR.SET_CHOOSE, key),

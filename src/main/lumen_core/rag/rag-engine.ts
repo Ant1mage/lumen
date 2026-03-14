@@ -49,7 +49,7 @@ class RagEngine {
 
     // 清空现有缓存，确保与数据库同步
     this._documents.clear();
-    this.cacheOrder = [];
+    this._cacheOrder = [];
     this._cacheTimestamps.clear();
 
     for (const doc of docs) {
@@ -89,7 +89,7 @@ class RagEngine {
       if (ts < cutoff) {
         this._documents.delete(id);
         this._cacheTimestamps.delete(id);
-        this.cacheOrder = this._cacheOrder.filter((x) => x !== id);
+        this._cacheOrder = this._cacheOrder.filter((x) => x !== id);
       }
     }
   }
@@ -99,7 +99,7 @@ class RagEngine {
 
     if (this._cacheStrategy !== "lru") return;
     // Move to back of queue for LRU
-    this.cacheOrder = this._cacheOrder.filter((x) => x !== id);
+    this._cacheOrder = this._cacheOrder.filter((x) => x !== id);
     this._cacheOrder.push(id);
   }
 

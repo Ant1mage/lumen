@@ -5,8 +5,9 @@
  */
 
 import { ipcMain } from 'electron';
-import { STORE_CONFIG_CHANNELS, VIEW_CHANNELS } from '../shared/channels';
+import { STORE_CONFIG_CHANNELS, VIEW_CHANNELS, LUMEN_CORE_CHANNELS } from '../shared/channels';
 import { StoreService } from '../services/store.service';
+import { LumenCoreService } from '../services/lumen-core.service';
 
 const storeService = StoreService.getInstance();
 
@@ -57,4 +58,61 @@ export function registerIpcHandlers() {
     await storeService.setSidebarChoose(key as any);
     return true;
   });
+
+  // ==================== 3. LumenCore 状态监听 ====================
+  
+  // 监听 LumenCore 状态变化并转发给渲染进程
+  const lumenCoreService = LumenCoreService.getInstance();
+  lumenCoreService.onStateChange((state) => {
+    // 这里不需要手动发送，因为我们在 preload 中直接使用 ipcRenderer.on
+    // 但我们需要一个方法来触发事件
+  });
+
+  // 重新初始化 LumenCore
+  ipcMain.handle(LUMEN_CORE_CHANNELS.REINITIALIZE, async () => {
+    try {
+      console.log('收到重新初始化 LumenCore 的请求')
+      const lumenCore = lumenCoreService.getLumenCore()
+      if (lumenCore) {
+        // 先释放资源
+        await lumenCore.dispose()
+        // 等待一小段时间
+        await new Promise(resolve => setTimeout(resolve, 500))
+        // 重新初始化
+        await lumenCore.initEngine()
+        console.log('LumenCore 重新初始化完成')
+        return { success: true }
+      } else {
+        console.error('LumenCore 实例不存在')
+        return { success: false, error: 'LumenCore not initialized' }
+      }
+    } catch (error) {
+      console.error('重新初始化 LumenCore 失败:', error)
+      return { success: false, error: String(error) }
+    }
+  })
+
+  // 发送消息到 LumenCore
+  ipcMain.handle(LUMEN_CORE_CHANNELS.SEND_MESSAGE, async (event, content: string) => {
+    try {
+      console.log('收到发送消息请求:', content)
+      const lumenCore = lumenCoreService.getLumenCore()
+      if (!lumenCore) {
+        console.error('LumenCore 实例不存在')
+        return { success: false, error: 'LumenCore not initialized' }
+      }
+
+      // 调用 LumenCore 的 chat 方法
+      await lumenCore.chat(content, (token) => {
+        // 流式响应：将每个 token 发送回渲染进程
+        event.sender.send('lumen-core-token', token)
+      })
+
+      console.log('消息发送完成')
+      return { success: true }
+    } catch (error) {
+      console.error('发送消息失败:', error)
+      return { success: false, error: String(error) }
+    }
+  })
 }

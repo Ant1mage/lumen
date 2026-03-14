@@ -32,6 +32,10 @@
     --accent: oklch(0.88 0.01 260);
     --accent-foreground: oklch(0.25 0.02 260);
 
+    /* 按钮禁用状态 */
+    --button-disabled: oklch(0.6 0.0 0);
+    --button-disabled-foreground: oklch(0.4 0.0 0);
+
     --destructive: oklch(0.55 0.18 25);
     --destructive-foreground: oklch(0.98 0 0);
 
@@ -93,6 +97,10 @@
     /* 悬浮态稍亮 */
     --accent-foreground: oklch(0.95 0.01 260);
 
+    /* 按钮禁用状态 */
+    --button-disabled: oklch(0.4 0.0 0);
+    --button-disabled-foreground: oklch(0.7 0.0 0);
+
     /* --- 涨跌色：针对黑底优化，增加荧光感 --- */
     --destructive: oklch(0.6 0.18 25);
     /* 亮珊瑚红 */
@@ -134,6 +142,12 @@
     --color-muted-foreground: var(--muted-foreground);
     --color-accent: var(--accent);
     --color-accent-foreground: var(--accent-foreground);
+
+    /* 按钮禁用状态 */
+    --color-button-disabled: var(--button-disabled);
+    --color-button-disabled-foreground: var(--button-disabled-foreground);
+
+    /* 涨跌色 */
     --color-destructive: var(--destructive);
     --color-destructive-foreground: var(--destructive-foreground);
     --color-settings-card: var(--settings-card);
@@ -176,4 +190,69 @@
     body {
         @apply bg-background text-foreground transition-colors duration-300;
     }
+}
+
+/* 加载中自定义动画 */
+@keyframes loading-enlarge {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1.5);
+        opacity: 1;
+    }
+}
+
+@keyframes loading-shrink {
+    0% {
+        transform: scale(1.5);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(0);
+        opacity: 0;
+    }
+}
+
+.animate-loading-enlarge {
+    animation: loading-enlarge 300ms ease-out forwards;
+}
+
+.animate-loading-shrink {
+    animation: loading-shrink 1000ms ease-in forwards;
+}
+
+/* 快速闪烁动画 - 颜色变化更大 */
+@keyframes pulse-fast {
+
+    0%,
+    100% {
+        opacity: 1;
+        filter: brightness(1);
+    }
+
+    50% {
+        opacity: 0.4;
+        filter: brightness(1.5);
+    }
+}
+
+.animate-pulse-fast {
+    animation: pulse-fast 800ms cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* 隐藏滚动条但保留功能 */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari and Opera */
 }
