@@ -1,6 +1,7 @@
-import LumenCore, { LumenCoreState } from '@main/lumen_core/lumen-core';
+import LumenCore from '@main/lumen_core/lumen-core';
 import { BrowserWindow, ipcMain } from 'electron';
 import { LUMEN_CORE_CHANNELS } from '@shared/channels';
+import { LumenCoreState } from '@shared/types';
 
 /**
  * LumenCore 状态管理服务
@@ -11,7 +12,7 @@ export class LumenCoreService {
   private _lumenCore: LumenCore | null = null;
   private _stateListeners: Set<(state: LumenCoreState) => void> = new Set();
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): LumenCoreService {
     if (!LumenCoreService.instance) {
@@ -25,12 +26,12 @@ export class LumenCoreService {
    */
   setLumenCore(lumenCore: LumenCore) {
     this._lumenCore = lumenCore;
-    
+
     // 订阅状态变化并转发给所有监听器
     if (lumenCore) {
       lumenCore.onStateChange((state: LumenCoreState) => {
         console.log('LumenCoreService: 收到状态更新', state)
-        
+
         this._stateListeners.forEach(listener => {
           try {
             listener(state);
@@ -38,7 +39,7 @@ export class LumenCoreService {
             console.error('LumenCoreService: 状态监听器执行失败', error);
           }
         });
-        
+
         // 发送到渲染进程
         const windows = BrowserWindow.getAllWindows();
         if (windows.length > 0) {
@@ -63,7 +64,7 @@ export class LumenCoreService {
    */
   onStateChange(listener: (state: LumenCoreState) => void): () => void {
     this._stateListeners.add(listener);
-    
+
     // 返回取消订阅函数
     return () => {
       this._stateListeners.delete(listener);

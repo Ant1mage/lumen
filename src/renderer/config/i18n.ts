@@ -16,7 +16,7 @@ const zhCN = {
       search: '搜索',
       settings: '设置'
     },
-    
+
     // 侧边栏
     sidebar: {
       expand: '展开',
@@ -30,7 +30,7 @@ const zhCN = {
         energy: '能源'
       }
     },
-    
+
     // 设置页面
     settings_page: {
       title: '设置',
@@ -42,13 +42,13 @@ const zhCN = {
       },
       language: '语言'
     },
-    
+
     // 股票行情面板
     stock_panel: {
       title: '行情',
       real_time: '实时数据'
     },
-    
+
     // 新闻面板
     news_panel: {
       title: '实时新闻',
@@ -69,7 +69,7 @@ const zhCN = {
         policy: '政策'
       }
     },
-    
+
     // AI 聊天面板
     chat_panel: {
       title: '分析',
@@ -79,9 +79,12 @@ const zhCN = {
         trend_analysis: '趋势分析'
       },
       input_placeholder: '输入您的问题...',
-      ai_loading: '感谢您的提问！我正在为您分析相关数据，请稍候...'
+      ai_loading: '感谢您的提问！我正在为您分析相关数据，请稍候...',
+      init_error: 'LumenCore 初始化失败',
+      init_failed: 'AI 引擎初始化失败',
+      retry: '重试'
     },
-    
+
     // 启动页
     splash: {
       initializing: '正在初始化...',
@@ -90,7 +93,7 @@ const zhCN = {
       retry: '重新加载',
       retrying: '正在重试...'
     },
-    
+
     // LumenCore 状态
     lumen_status: {
       idle: '空闲',
@@ -116,7 +119,7 @@ const enUS = {
       search: 'Search',
       settings: 'Settings'
     },
-    
+
     // 侧边栏
     sidebar: {
       expand: 'Expand',
@@ -130,7 +133,7 @@ const enUS = {
         energy: 'Energy'
       }
     },
-    
+
     // 设置页面
     settings_page: {
       title: 'Settings',
@@ -142,13 +145,13 @@ const enUS = {
       },
       language: 'Language'
     },
-    
+
     // 股票行情面板
     stock_panel: {
       title: 'Market',
       real_time: 'Real-time'
     },
-    
+
     // 新闻面板
     news_panel: {
       title: 'Real-time News',
@@ -169,7 +172,7 @@ const enUS = {
         policy: 'Policy'
       }
     },
-    
+
     // AI 聊天面板
     chat_panel: {
       title: 'Chat',
@@ -179,9 +182,12 @@ const enUS = {
         trend_analysis: 'Trend Analysis'
       },
       input_placeholder: 'Enter your question...',
-      ai_loading: 'Thank you for your question! I\'m analyzing the relevant data for you, please wait...'
+      ai_loading: 'Thank you for your question! I\'m analyzing the relevant data for you, please wait...',
+      init_error: 'LumenCore initialization failed',
+      init_failed: 'AI Engine Initialization Failed',
+      retry: 'Retry'
     },
-    
+
     // 启动页
     splash: {
       initializing: 'Initializing...',
@@ -190,7 +196,7 @@ const enUS = {
       retry: 'Reload',
       retrying: 'Retrying...'
     },
-    
+
     // LumenCore 状态
     lumen_status: {
       idle: 'Idle',

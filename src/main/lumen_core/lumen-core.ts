@@ -4,25 +4,12 @@ import RagEngine from "@main/lumen_core/rag/rag-engine";
 import LLMPath from "@main/lumen_core/ai/llm-path";
 import DatabaseEngine from "@main/lumen_core/db/database-engine";
 // 引入规范化的日志服务和类型
-import { LLMRole, LLMMessage } from "@shared/types";
+import { LLMRole, LLMMessage, LumenCoreStatus, LumenCoreState } from "@shared/types";
 import { logger } from "@main/lumen_core/tools/logger";
 import PromptTool from "@main/lumen_core/tools/prompt-tool";
 import { systemMonitor } from "@main/lumen_core/tools/system-monitor";
 
-export enum LumenCoreStatus {
-  Idle = "idle",
-  Initializing = "initializing",
-  Ready = "ready",
-  Error = "error",
-  Disposing = "disposing",
-}
-
-export interface LumenCoreState {
-  status: LumenCoreStatus;
-  error?: string;
-  progress?: string;
-}
-
+// 状态和类型已经从 @shared/types 导入
 class LumenCore {
   private _database!: DatabaseEngine;
   private _embedding!: LLMEngine; // 专门负责向量化的 BGE-M3

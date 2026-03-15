@@ -6,7 +6,7 @@ import { AIChatMessagesPanel } from "./ai-chat-messages-panel"
 import { AIChatInputPanel } from "./ai-chat-input-panel"
 import { Button } from "@renderer/components/ui/button"
 import { useTranslation } from "react-i18next"
-import { LLMMessage, LLMRole } from "@shared/types"
+import { LLMMessage, LLMRole, LumenCoreState } from "@shared/types"
 
 // 渲染层扩展的消息类型（带 UI 元数据）
 interface UIMessage extends LLMMessage {
@@ -21,15 +21,17 @@ export function AIChatPanel() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
   const [avatarStage, setAvatarStage] = useState<'normal' | 'enlarge' | 'shrink'>('normal')
+  const [error, setError] = useState<string | null>(null)
 
   // 启动时加载 LumenCore
   useEffect(() => {
     if (window.lumen_core) {
-      const unsubscribe = window.lumen_core.onStateChange((state) => {
+      const unsubscribe = window.lumen_core.onStateChange((state: LumenCoreState) => {
         console.log('AIChatPanel: LumenCore 状态变化', state)
 
         switch (state.status) {
           case 'initializing':
+            // 保持脉冲动画等待
             break
           case 'ready':
             // 加载成功：先放大到 1.5x，然后缩小到 0
@@ -46,6 +48,11 @@ export function AIChatPanel() {
             }, 1400)
             break
           case 'error':
+            // 加载失败：显示错误信息，停止动画
+            console.error('LumenCore 初始化失败:', state.error)
+            setError(state.error || t('chat_panel.init_error'))
+            // 停止动画，恢复正常状态
+            setAvatarStage('normal')
             break
         }
       })
@@ -129,7 +136,7 @@ export function AIChatPanel() {
   return (
     <div className="relative flex h-full flex-col bg-card">
       {/* Loading Container - 覆盖整个 Chat Panel */}
-      {!isLoaded && (
+      {!isLoaded && !error && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-card">
           <div className="flex flex-col items-center space-y-6">
             {/* Avatar Logo - 使用绿色 (primary) */}
@@ -145,12 +152,48 @@ export function AIChatPanel() {
 
             {/* Status Text - 与 Logo 同步动画 */}
             <p className={`text-center text-sm font-medium text-muted-foreground transition-all ${avatarStage === 'enlarge' ? 'animate-loading-enlarge' :
-                avatarStage === 'shrink' ? 'animate-loading-shrink' :
-                  !isLoaded ? 'animate-pulse-fast' :
-                    ''
+              avatarStage === 'shrink' ? 'animate-loading-shrink' :
+                !isLoaded ? 'animate-pulse-fast' :
+                  ''
               }`}>
               {t('splash.initializing')}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Error Container - 显示错误信息 */}
+      {error && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-card">
+          <div className="flex flex-col items-center space-y-6 max-w-md px-6">
+            {/* Error Icon - 红色警告图标 */}
+            <div className="h-32 w-32 text-destructive">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+
+            {/* Error Title */}
+            <h3 className="text-lg font-semibold text-foreground">
+              {t('chat_panel.init_failed')}
+            </h3>
+
+            {/* Error Message */}
+            <p className="text-center text-sm text-muted-foreground break-words">
+              {error}
+            </p>
+
+            {/* Retry Button */}
+            <Button
+              onClick={() => {
+                setError(null)
+                setAvatarStage('normal')
+                window.lumen_core?.reinitialize()
+              }}
+              className="mt-4"
+            >
+              {t('chat_panel.retry')}
+            </Button>
           </div>
         </div>
       )}
