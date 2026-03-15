@@ -17,7 +17,7 @@ const chatBubbleVariants = cva(
   {
     variants: {
       isUser: {
-        true: "bg-primary text-primary-foreground",
+        true: "bg-primary/70 text-primary-foreground",
         false: "bg-muted text-foreground",
       },
       animation: {
@@ -177,7 +177,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           </div>
         ) : null}
 
-        <div className={cn(chatBubbleVariants({ isUser, animation }))}>
+        <div className={cn(chatBubbleVariants({ isUser, animation }), "px-3 py-2")}>
           {typeof content === 'string' ? (
             <MarkdownRenderer>{content}</MarkdownRenderer>
           ) : (
@@ -211,7 +211,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             )}
             key={`text-${index}`}
           >
-            <div className={cn(chatBubbleVariants({ isUser, animation }))}>
+            <div className={cn(chatBubbleVariants({ isUser, animation }), "px-3 py-2")}>
               <MarkdownRenderer>{part.text}</MarkdownRenderer>
               {actions ? (
                 <div className="absolute -bottom-4 right-2 flex space-x-1 rounded-lg border bg-background p-1 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100">
@@ -253,7 +253,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
   return (
     <div className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
-      <div className={cn(chatBubbleVariants({ isUser, animation }))}>
+      <div className={cn(chatBubbleVariants({ isUser, animation }), "px-3 py-2")}>
         {typeof content === 'string' ? (
           <MarkdownRenderer>{content}</MarkdownRenderer>
         ) : (

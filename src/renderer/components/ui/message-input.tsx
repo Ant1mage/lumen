@@ -204,7 +204,7 @@ export function MessageInput({
             onPaste={onPaste}
             onKeyDown={onKeyDown}
             className={cn(
-              "z-10 w-full grow resize-none rounded-xl border border-input bg-background p-3 pr-24 text-sm ring-offset-background transition-[border] placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+              "z-10 w-full grow resize-none rounded-xl border border-input bg-background p-3 pr-24 text-sm ring-offset-background transition-[border] placeholder:text-muted-foreground focus-visible:border-primary/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
               showFileList && "pb-16",
               className
             )}
@@ -275,7 +275,7 @@ export function MessageInput({
           <Button
             type="button"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8  bg-primary hover:bg-primary/20 transition-opacity"
             aria-label="Stop generating"
             onClick={stop}
           >
@@ -285,7 +285,7 @@ export function MessageInput({
           <Button
             type="submit"
             size="icon"
-            className="h-8 w-8 transition-opacity"
+            className="h-8 w-8 bg-primary hover:bg-primary/20 transition-opacity"
             aria-label="Send message"
             disabled={props.value === "" || isGenerating}
           >

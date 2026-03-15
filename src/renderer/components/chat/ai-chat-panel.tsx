@@ -12,6 +12,7 @@ import { cn } from "@renderer/tools/utils"
 import { ChatContainer, ChatMessages, ChatForm } from "@renderer/components/ui/chat"
 import { MessageList } from "@renderer/components/ui/message-list"
 import { MessageInput } from "@renderer/components/ui/message-input"
+import { ScrollArea } from "@renderer/components/ui/scroll-area"
 import type { Message } from "@renderer/components/ui/chat-message"
 
 // 转换 LLMMessage 为 UI Message
@@ -219,33 +220,37 @@ export function AIChatPanel() {
       </CardHeader>
 
       {/* Messages & Input */}
-      <div className="flex flex-col h-full px-4 pb-2">
-        <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex flex-col flex-1 min-h-0">
+        {/* Messages Area - 使用 ScrollArea */}
+        <ScrollArea className="flex-1" style={{ minHeight: 0 }}>
           <ChatMessages messages={chatMessages}>
             <MessageList
               messages={chatMessages}
               isTyping={messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && messages[messages.length - 1]?.content === ''}
             />
           </ChatMessages>
-        </div>
+        </ScrollArea>
 
-        <ChatForm
-          className="mt-4"
-          isPending={isStreaming}
-          handleSubmit={handleSendMessage}
-        >
-          {({ files, setFiles }) => (
-            <MessageInput
-              value={input}
-              onChange={handleInputChange}
-              allowAttachments
-              files={files}
-              setFiles={setFiles}
-              stop={() => { }}
-              isGenerating={isStreaming}
-            />
-          )}
-        </ChatForm>
+        {/* Input Area */}
+        <div className="mt-4 px-2 pb-0 shrink-0">
+          <ChatForm
+            isPending={isStreaming}
+            handleSubmit={handleSendMessage}
+          >
+            {({ files, setFiles }) => (
+              <MessageInput
+                placeholder={t('chat_panel.input_placeholder')}
+                value={input}
+                onChange={handleInputChange}
+                allowAttachments
+                files={files}
+                setFiles={setFiles}
+                stop={() => { }}
+                isGenerating={isStreaming}
+              />
+            )}
+          </ChatForm>
+        </div>
       </div>
     </Card>
   )

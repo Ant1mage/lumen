@@ -160,7 +160,7 @@ export function Chat({
         <>
           <div className="border-r pr-1">
             <CopyButton
-              content={message.content}
+              content={typeof message.content === 'string' ? message.content : ''}
               copyMessage="Copied response to clipboard!"
             />
           </div>
@@ -183,7 +183,7 @@ export function Chat({
         </>
       ) : (
         <CopyButton
-          content={message.content}
+          content={typeof message.content === 'string' ? message.content : ''}
           copyMessage="Copied response to clipboard!"
         />
       ),
@@ -250,7 +250,7 @@ export function ChatMessages({
 
   return (
     <div
-      className="grid grid-cols-1 overflow-y-auto"
+      className="grid grid-cols-1 flex-1 min-h-0"
       ref={containerRef}
       onScroll={handleScroll}
       onTouchStart={handleTouchStart}
