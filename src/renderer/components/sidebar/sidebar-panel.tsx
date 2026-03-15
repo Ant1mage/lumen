@@ -15,7 +15,7 @@ import { Button } from "@renderer/components/ui/button"
 import { AILogo } from "@renderer/components/ui/ai-logo"
 import { SettingsPanel } from "@renderer/components/settings/settings-panel"
 import { useTranslation } from "react-i18next"
-import { Card } from "../ui/card"
+import { Card } from "@renderer/components/ui/card"
 
 interface SidebarNavItem {
     icon: React.ElementType

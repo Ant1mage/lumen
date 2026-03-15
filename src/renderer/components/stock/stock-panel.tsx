@@ -1,7 +1,7 @@
 import { StockCard } from "@renderer/components/stock/stock-card"
 import { ScrollArea } from "@renderer/components/ui/scroll-area"
 import { useTranslation } from "react-i18next"
-import { Card, CardHeader } from "../ui/card"
+import { Card, CardHeader } from "@renderer/components/ui/card"
 
 interface Stock {
     name: string

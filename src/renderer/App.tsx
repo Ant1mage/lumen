@@ -4,7 +4,7 @@ import { NewsFeedPanel } from "@renderer/components/news/news-feed-panel";
 import { StockPanel } from "@renderer/components/stock/stock-panel";
 import { useEffect, useState } from "react";
 import i18n from "@renderer/config/i18n";
-import { cn } from "./tools/utils";
+import { cn } from "@renderer/tools/utils";
 
 
 

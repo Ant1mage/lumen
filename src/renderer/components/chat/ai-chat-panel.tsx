@@ -1,29 +1,18 @@
 'use client'
 
 import { useState, useEffect } from "react"
-import { Sparkles } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { AILogo } from "@renderer/components/ui/ai-logo"
 import { useTranslation } from "react-i18next"
 import { LLMMessage, LLMRole, LumenCoreState } from "@shared/types"
 import { logger } from "@renderer/tools/logger"
-import { Card, CardHeader } from "../ui/card"
+import { Card, CardHeader } from "@renderer/components/ui/card"
 import { cn } from "@renderer/tools/utils"
 import { ChatContainer, ChatMessages, ChatForm } from "@renderer/components/ui/chat"
 import { MessageList } from "@renderer/components/ui/message-list"
 import { MessageInput } from "@renderer/components/ui/message-input"
 import { ScrollArea } from "@renderer/components/ui/scroll-area"
 import type { Message } from "@renderer/components/ui/chat-message"
-
-// 转换 LLMMessage 为 UI Message
-const convertToUIMessage = (msg: LLMMessage & { id: string; time: string; isStreaming?: boolean }): Message => {
-  return {
-    id: msg.id,
-    role: msg.role === 'user' ? 'user' : 'assistant',
-    content: msg.content,
-    createdAt: new Date(),
-  }
-}
 
 export function AIChatPanel() {
   const { t } = useTranslation()

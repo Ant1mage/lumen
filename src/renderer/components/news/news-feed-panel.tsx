@@ -1,9 +1,8 @@
 import { Badge } from "@renderer/components/ui/badge"
 import { ScrollArea } from "@renderer/components/ui/scroll-area"
 import { useTranslation } from "react-i18next"
-import { NewsFeedCard } from "./news-feed-card"
-import { Card, CardHeader } from "../ui/card"
-import { DialogOverlay } from "../ui/dialog"
+import { NewsFeedCard } from "@renderer/components/news/news-feed-card"
+import { Card, CardHeader } from "@renderer/components/ui/card"
 
 interface NewsItem {
     id: string
