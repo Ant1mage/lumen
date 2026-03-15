@@ -6,7 +6,7 @@ import { LumenCoreService } from '@main/services/lumen-core.service';
 
 let mainWindow: BrowserWindow | null = null;
 let lumenCore: LumenCore | null = null;
-const isDev = process.env.RENDERER_URL;
+const isDev = process.env.NODE_ENV === 'development';
 
 function createWindow() {
   // 在创建窗口前先读取主题和语言设置（使用同步方式）
@@ -14,7 +14,7 @@ function createWindow() {
   const userStore = new ElectronStore({ name: 'UserSettingConfig' });
   const theme = userStore.get('theme', 'system');
   const language = userStore.get('language', 'zh-CN');
-  
+
   // 根据主题设置确定是否使用暗色模式
   let isDarkMode = false;
   if (theme === 'dark') {
@@ -26,7 +26,7 @@ function createWindow() {
     const nativeTheme = require('electron').nativeTheme;
     isDarkMode = nativeTheme.shouldUseDarkColors;
   }
-  
+
   // 背景色必须与 global.css 中的 --background 值匹配
   // 浅色模式：oklch(0.92 0.01 260) ≈ #e8e9ea
   // 深色模式：oklch(0.12 0.015 260) ≈ #18181b
@@ -41,18 +41,18 @@ function createWindow() {
     },
   });
 
-  if (isDev && process.env.RENDERER_URL) {
-    // 开发模式：使用 Webpack Dev Server
-    mainWindow.loadURL(process.env.RENDERER_URL);
+  if (isDev) {
+    // 开发模式：使用 Vite Dev Server
+    mainWindow.loadURL('http://localhost:3001');
     mainWindow.webContents.openDevTools();
   } else {
     // 生产模式：加载打包后的文件
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
-  
+
   // 设置初始语言
   console.log('启动时语言设置:', language);
-  
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -67,7 +67,7 @@ app.whenReady().then(async () => {
   // 初始化 LumenCore（在后台进行，不阻塞 UI）
   lumenCore = new LumenCore();
   LumenCoreService.getInstance().setLumenCore(lumenCore);
-  
+
   // 启动初始化（异步，不阻塞）
   lumenCore.initEngine().catch(err => {
     console.error('LumenCore 初始化失败:', err);

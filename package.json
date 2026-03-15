@@ -4,20 +4,11 @@
   "description": "AI-powered stock analysis application with RAG and local LLM",
   "main": "dist/main/index.js",
   "scripts": {
-    "dev:electron": "concurrently \"npm run dev:main:webpack\" \"npm run dev:preload:webpack\" \"npm run dev:renderer:webpack\" \"npm run start:electron:dev\"",
-    "dev:webpack": "concurrently \"npm run dev:main:webpack\" \"npm run dev:renderer:webpack\"",
-    "dev:vite": "vite",
-    "dev:main:webpack": "webpack --config config/webpack.main.config.js --watch",
-    "dev:preload:webpack": "webpack --config config/webpack.preload.config.js --watch",
-    "dev:renderer:webpack": "webpack serve --config config/webpack.renderer.config.js",
-    "start:electron:dev": "wait-on dist/main/index.js dist/preload/index.js http://localhost:3001 && RENDERER_URL=http://localhost:3001 electron .",
-    "build:webpack": "npm run build:main:webpack && npm run build:renderer:webpack",
-    "build:main:webpack": "webpack --config config/webpack.main.config.js --mode production",
-    "build:preload:webpack": "webpack --config config/webpack.preload.config.js --mode production",
-    "build:renderer:webpack": "webpack --config config/webpack.renderer.config.js --mode production",
-    "build:vite": "tsc && vite build",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
     "build:electron": "electron-builder",
-    "preview": "vite preview"
+    "clean": "rm -rf dist release build config"
   },
   "keywords": [
     "electron",
@@ -30,7 +21,7 @@
   "license": "MIT",
   "engines": {
     "node": ">=20.0.0",
-    "npm": ">=10.0.0"
+    "pnpm": ">=8.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.2.0",
@@ -40,24 +31,15 @@
     "@types/react-dom": "19.1.0",
     "@vitejs/plugin-react": "4.5.0",
     "autoprefixer": "10.4.21",
-    "concurrently": "9.1.2",
-    "css-loader": "7.1.2",
     "electron": "35.3.0",
     "electron-builder": "25.1.8",
-    "html-webpack-plugin": "5.6.3",
+    "electron-rebuild": "^3.2.9",
+    "electron-vite": "^3.0.0",
     "postcss": "8.5.3",
     "postcss-loader": "8.1.1",
-    "style-loader": "4.0.0",
     "tailwindcss": "4.2.0",
-    "ts-loader": "9.5.2",
-    "ts-node": "10.9.2",
     "typescript": "5.8.3",
-    "vite": "6.2.3",
-    "vite-plugin-electron": "0.29.0",
-    "wait-on": "8.0.3",
-    "webpack": "5.98.0",
-    "webpack-cli": "6.0.1",
-    "webpack-dev-server": "5.2.1"
+    "vite": "6.2.3"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "1.2.12",
