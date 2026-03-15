@@ -224,6 +224,30 @@
     /* Chrome, Safari and Opera */
 }
 
+/* 自定义滚动条样式 */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted-foreground) transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--muted-foreground);
+    border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--foreground);
+}
+
 /* AI 生成中 - 三个点闪烁动画 */
 @keyframes typing-dot {
 

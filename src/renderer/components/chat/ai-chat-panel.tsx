@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { Sparkles } from "lucide-react"
-import { AIChatMessagesPanel } from "./ai-chat-messages-panel"
-import { AIChatInputPanel } from "./ai-chat-input-panel"
 import { Button } from "@renderer/components/ui/button"
 import { AILogo } from "@renderer/components/ui/ai-logo"
 import { useTranslation } from "react-i18next"
@@ -11,21 +9,29 @@ import { LLMMessage, LLMRole, LumenCoreState } from "@shared/types"
 import { logger } from "@renderer/tools/logger"
 import { Card, CardHeader } from "../ui/card"
 import { cn } from "@renderer/tools/utils"
+import { ChatContainer, ChatMessages, ChatForm } from "@renderer/components/ui/chat"
+import { MessageList } from "@renderer/components/ui/message-list"
+import { MessageInput } from "@renderer/components/ui/message-input"
+import type { Message } from "@renderer/components/ui/chat-message"
 
-// 渲染层扩展的消息类型（带 UI 元数据）
-interface UIMessage extends LLMMessage {
-  id: string
-  time: string
-  isStreaming?: boolean
+// 转换 LLMMessage 为 UI Message
+const convertToUIMessage = (msg: LLMMessage & { id: string; time: string; isStreaming?: boolean }): Message => {
+  return {
+    id: msg.id,
+    role: msg.role === 'user' ? 'user' : 'assistant',
+    content: msg.content,
+    createdAt: new Date(),
+  }
 }
 
 export function AIChatPanel() {
   const { t } = useTranslation()
-  const [messages, setMessages] = useState<UIMessage[]>([])
+  const [messages, setMessages] = useState<(LLMMessage & { id: string; time: string; isStreaming?: boolean })[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
   const [avatarStage, setAvatarStage] = useState<'normal' | 'enlarge' | 'shrink'>('normal')
   const [error, setError] = useState<string | null>(null)
+  const [input, setInput] = useState("")
 
   // 启动时加载 LumenCore
   useEffect(() => {
@@ -67,11 +73,18 @@ export function AIChatPanel() {
     }
   }, [])
 
-  const handleSendMessage = async (content: string) => {
-    if (!window.lumen_core || isStreaming) return
+  const handleSendMessage = async (
+    event?: { preventDefault?: () => void },
+    options?: { experimental_attachments?: FileList }
+  ) => {
+    if (event?.preventDefault) event.preventDefault()
+    if (!window.lumen_core || isStreaming || !input.trim()) return
+
+    const content = input
+    setInput("")
 
     // 添加用户消息
-    const userMessage: UIMessage = {
+    const userMessage = {
       id: Date.now().toString(),
       role: LLMRole.User,
       content,
@@ -83,34 +96,29 @@ export function AIChatPanel() {
 
     // 创建 AI 消息占位符
     const aiMessageId = (Date.now() + 1).toString()
-    const aiMessage: UIMessage = {
+    const aiMessage = {
       id: aiMessageId,
       role: LLMRole.Assistant,
-      content: "",  // 空内容，等待流式响应
+      content: "",
       time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
-      isStreaming: true  // 标记为正在生成
+      isStreaming: true
     }
 
-    // 先添加空消息占位
     setMessages(prev => [...prev, aiMessage])
 
     try {
-      // 监听 token 流式响应
       const unsubscribeToken = window.lumen_core.onToken((token) => {
-        // 收到第一个 token 时，取消 isStreaming 状态
         setMessages(prev => prev.map(msg =>
           msg.id === aiMessageId
-            ? { ...msg, content: msg.content + token, isStreaming: false }
+            ? { ...msg, content: msg.content + token }
             : msg
         ))
       })
 
-      // 发送消息
       const result = await window.lumen_core.sendMessage(content)
 
       if (!result.success) {
         logger.error(`发送消息失败：${result.error}`, 'AIChatPanel')
-        // 在 AI 消息中显示错误
         setMessages(prev => prev.map(msg =>
           msg.id === aiMessageId
             ? { ...msg, content: `Error: ${result.error}` }
@@ -118,7 +126,6 @@ export function AIChatPanel() {
         ))
       }
 
-      // 清理 token 监听器
       unsubscribeToken()
     } catch (error) {
       logger.error(`消息发送异常：${error}`, 'AIChatPanel')
@@ -132,16 +139,23 @@ export function AIChatPanel() {
     }
   }
 
-  const handleQuickAction = (action: string) => {
-    logger.debug(`快速操作：${action}`, 'AIChatPanel')
-    // TODO: Implement quick action logic
+  const handleInputChange: React.ChangeEventHandler<HTMLTextAreaElement> = (e) => {
+    setInput(e.target.value)
   }
 
+  // 为 MessageList 适配消息格式
+  const chatMessages: Message[] = messages.map(msg => ({
+    id: msg.id,
+    role: msg.role === 'user' ? 'user' : 'assistant',
+    content: msg.content,
+    createdAt: new Date(),
+  }))
+
   return (
-    <Card className={cn("relative flex h-full flex-col border-0")}>
+    <Card className={cn("relative flex h-full flex-col border-0 overflow-hidden")}>
       {/* Loading Container - 覆盖整个 Chat Panel */}
       {!isLoaded && !error && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-card">
           {/* Logo 和文字作为整体进行动画 */}
           <div
             className={`flex flex-col items-center space-y-6 transition-all ${avatarStage === 'enlarge' ? 'animate-loading-enlarge' :
@@ -204,17 +218,35 @@ export function AIChatPanel() {
         </div>
       </CardHeader>
 
-      {/* Messages */}
-      <AIChatMessagesPanel
-        messages={messages}
-        isLoaded={isLoaded}
-      />
+      {/* Messages & Input */}
+      <div className="flex flex-col h-full px-4 pb-2">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <ChatMessages messages={chatMessages}>
+            <MessageList
+              messages={chatMessages}
+              isTyping={messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && messages[messages.length - 1]?.content === ''}
+            />
+          </ChatMessages>
+        </div>
 
-      {/* Input & Actions */}
-      <AIChatInputPanel
-        onSendMessage={handleSendMessage}
-        onQuickAction={handleQuickAction}
-      />
+        <ChatForm
+          className="mt-4"
+          isPending={isStreaming}
+          handleSubmit={handleSendMessage}
+        >
+          {({ files, setFiles }) => (
+            <MessageInput
+              value={input}
+              onChange={handleInputChange}
+              allowAttachments
+              files={files}
+              setFiles={setFiles}
+              stop={() => { }}
+              isGenerating={isStreaming}
+            />
+          )}
+        </ChatForm>
+      </div>
     </Card>
   )
 }
