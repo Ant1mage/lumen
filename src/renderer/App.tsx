@@ -4,6 +4,7 @@ import { NewsFeedPanel } from "@renderer/components/news/news-feed-panel";
 import { StockPanel } from "@renderer/components/stock/stock-panel";
 import { useEffect, useState } from "react";
 import i18n from "@renderer/config/i18n";
+import { cn } from "./tools/utils";
 
 
 
@@ -42,7 +43,7 @@ export default function Dashboard() {
 
   return (
     /* Main Content - 使用固定 padding，不设置背景色 */
-    <div className="flex h-screen w-full overflow-hidden p-3">
+    <div className={cn("flex h-screen w-full overflow-hidden p-3 bg-background")}>
       {/* Sidebar */}
       <SidebarPanel />
 

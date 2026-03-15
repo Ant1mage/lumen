@@ -1,6 +1,9 @@
 import { Badge } from "@renderer/components/ui/badge"
 import { ScrollArea } from "@renderer/components/ui/scroll-area"
 import { useTranslation } from "react-i18next"
+import { NewsFeedCard } from "./news-feed-card"
+import { Card, CardHeader } from "../ui/card"
+import { DialogOverlay } from "../ui/dialog"
 
 interface NewsItem {
     id: string
@@ -55,63 +58,35 @@ const newsData: NewsItem[] = [
     }
 ]
 
-const tagColors: Record<string, string> = {
-    "tech": "bg-accent/20 text-accent-foreground border-accent/30",
-    "new_energy": "bg-primary/20 text-primary border-primary/30",
-    "market": "bg-chart-5/20 text-chart-5 border-chart-5/30",
-    "hot": "bg-chart-2/20 text-chart-2 border-chart-2/30",
-    "ai": "bg-accent/20 text-accent-foreground border-accent/30",
-    "fund": "bg-chart-4/20 text-chart-4 border-chart-4/30",
-    "policy": "bg-primary/20 text-primary border-primary/30"
-}
-
 export function NewsFeedPanel() {
     const { t } = useTranslation()
 
     return (
-        <div className="flex h-full flex-col">
-            <div className="flex items-center justify-between px-4 py-4">
-                <h2 className="text-xl font-semibold text-foreground">{t('news_panel.title')}</h2>
-                <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                </span>
-            </div>
+        <Card className="flex h-full flex-col border-0">
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold text-foreground">{t('news_panel.title')}</h2>
+                    <span className="relative flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                    </span>
+                </div>
+            </CardHeader>
 
             <ScrollArea className="flex-1" style={{ minHeight: 0 }}>
                 <div className="space-y-1 px-3 pb-3">
                     {newsData.map((news) => (
-                        <div
+                        <NewsFeedCard
                             key={news.id}
-                            className="group cursor-pointer rounded-xl p-3 transition-all duration-200 hover:bg-secondary/50"
-                        >
-                            <div className="flex items-start gap-3">
-                                <span className="mt-0.5 text-xs font-medium text-muted-foreground">
-                                    {news.time}
-                                </span>
-                                <div className="flex-1 space-y-2">
-                                    <p className="text-sm leading-relaxed text-foreground/90 group-hover:text-foreground">
-                                        <span className="mr-1 text-muted-foreground">|</span>
-                                        <span className="text-muted-foreground">{t(`news_panel.categories.${news.category.toLowerCase()}`)}：</span>
-                                        {news.title}
-                                    </p>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {news.tags.map((tag) => (
-                                            <Badge
-                                                key={tag}
-                                                variant="outline"
-                                                className={`text-[10px] px-1.5 py-0 font-normal ${tagColors[tag] || "bg-muted text-muted-foreground"}`}
-                                            >
-                                                {t(`news_panel.tags.${tag.toLowerCase()}`)}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                            id={news.id}
+                            time={news.time}
+                            category={news.category}
+                            title={news.title}
+                            tags={news.tags}
+                        />
                     ))}
                 </div>
             </ScrollArea>
-        </div>
+        </Card>
     )
 }

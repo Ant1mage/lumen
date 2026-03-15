@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Send, LineChart, TrendingUp, BarChart3 } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
+import { Input } from "@renderer/components/ui/input"
 import { cn } from "@renderer/tools/utils"
 import { useTranslation } from "react-i18next"
 
@@ -53,20 +54,20 @@ export function AIChatInputPanel({ onSendMessage, onQuickAction }: AIChatInputPa
             </div>
 
             {/* Input Area */}
-            <div className="flex items-center gap-2 rounded-2xl bg-secondary/50 px-4 py-2.5">
-                <input
+            <div className="flex items-center gap-2">
+                <Input
                     type="text"
                     placeholder={t('chat_panel.input_placeholder')}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                    className="flex-1 h-9 rounded-xl bg-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
                 <Button
                     size="icon"
                     disabled={!input.trim()}
                     className={cn(
-                        "h-8 w-8 shrink-0 rounded-full",
+                        "h-9 w-9 shrink-0 rounded-full",
                         input.trim()
                             ? "bg-primary hover:bg-primary/90"
                             : "bg-button-disabled cursor-not-allowed"

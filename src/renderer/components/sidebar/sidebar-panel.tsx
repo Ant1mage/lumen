@@ -15,6 +15,7 @@ import { Button } from "@renderer/components/ui/button"
 import { AILogo } from "@renderer/components/ui/ai-logo"
 import { SettingsPanel } from "@renderer/components/settings/settings-panel"
 import { useTranslation } from "react-i18next"
+import { Card } from "../ui/card"
 
 interface SidebarNavItem {
     icon: React.ElementType
@@ -74,7 +75,7 @@ export function SidebarPanel() {
     bottomItems[1].onClick = () => setSettingsOpen(true)
 
     return (
-        <div className={cn(
+        <Card className={cn(
             "mr-3 flex h-full flex-col rounded-2xl border border-border/50 bg-card transition-all duration-300",
             expanded ? "w-[200px]" : "w-[72px]"
         )}>
@@ -159,6 +160,6 @@ export function SidebarPanel() {
 
             {/* Settings Panel */}
             <SettingsPanel open={settingsOpen} onOpenChange={setSettingsOpen} />
-        </div>
+        </Card>
     )
 }

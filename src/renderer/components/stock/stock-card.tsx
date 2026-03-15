@@ -34,15 +34,15 @@ export function StockCard({ name, code, price, change, sparklineData = [] }: Sto
         <div className={cn(
             "group relative overflow-hidden rounded-xl p-4 transition-all duration-300",
             isPositive
-                ? "bg-gradient-to-br from-chart-1/10 via-chart-1/5 to-transparent"
-                : "bg-gradient-to-br from-chart-2/10 via-chart-2/5 to-transparent"
+                ? "bg-gradient-to-br from-up/10 via-up/5 to-transparent"
+                : "bg-gradient-to-br from-down/10 via-down/5 to-transparent"
         )}>
             {/* Subtle glow effect on hover */}
             <div className={cn(
                 "absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100",
                 isPositive
-                    ? "bg-gradient-to-br from-chart-1/15 via-chart-1/8 to-transparent"
-                    : "bg-gradient-to-br from-chart-2/15 via-chart-2/8 to-transparent"
+                    ? "bg-gradient-to-br from-up/15 via-up/8 to-transparent"
+                    : "bg-gradient-to-br from-down/15 via-down/8 to-transparent"
             )} />
 
             <div className="relative flex items-center justify-between">
@@ -57,7 +57,7 @@ export function StockCard({ name, code, price, change, sparklineData = [] }: Sto
                     </p>
                     <div className={cn(
                         "flex items-center justify-end gap-1 text-xs font-medium",
-                        isPositive ? "text-chart-1" : "text-chart-2"
+                        isPositive ? "text-up" : "text-down"
                     )}>
                         {isPositive ? (
                             <TrendingUp className="h-3 w-3" />
@@ -76,7 +76,7 @@ export function StockCard({ name, code, price, change, sparklineData = [] }: Sto
                         <path
                             d={generateSparkline()}
                             fill="none"
-                            stroke={isPositive ? "var(--chart-1)" : "var(--chart-2)"}
+                            stroke={isPositive ? "var(--up)" : "var(--down)"}
                             strokeWidth="1.5"
                             strokeLinecap="round"
                             strokeLinejoin="round"

@@ -1,6 +1,7 @@
 import { StockCard } from "@renderer/components/stock/stock-card"
 import { ScrollArea } from "@renderer/components/ui/scroll-area"
 import { useTranslation } from "react-i18next"
+import { Card, CardHeader } from "../ui/card"
 
 interface Stock {
     name: string
@@ -54,15 +55,17 @@ export function StockPanel() {
     const { t } = useTranslation()
 
     return (
-        <div className="flex h-full flex-col">
+        <Card className="flex h-full flex-col border-0">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4">
-                <h1 className="text-xl font-semibold text-foreground">{t('stock_panel.title')}</h1>
-                <div className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5">
-                    <div className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-                    <span className="text-xs font-medium text-primary">{t('stock_panel.real_time')}</span>
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <h1 className="text-xl font-semibold text-foreground">{t('stock_panel.title')}</h1>
+                    <div className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5">
+                        <div className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+                        <span className="text-xs font-medium text-primary">{t('stock_panel.real_time')}</span>
+                    </div>
                 </div>
-            </div>
+            </CardHeader>
 
             {/* Stock Grid */}
             <ScrollArea className="flex-1" style={{ minHeight: 0 }}>
@@ -79,6 +82,6 @@ export function StockPanel() {
                     ))}
                 </div>
             </ScrollArea>
-        </div>
+        </Card>
     )
 }

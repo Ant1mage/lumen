@@ -7,11 +7,12 @@ interface SettingItemProps {
 
 export function SettingsItem({ label, children }: SettingItemProps) {
     return (
-        <div className="rounded-xl bg-settings-card p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-settings-card-foreground">{label}</span>
-                {children}
-            </div>
+        <div className={cn(
+            "flex items-center justify-between rounded-xl bg-card p-4 shadow-sm",
+            "dark:bg-card/50"
+        )}>
+            <span className="text-sm font-medium text-foreground">{label}</span>
+            {children}
         </div>
     )
 }

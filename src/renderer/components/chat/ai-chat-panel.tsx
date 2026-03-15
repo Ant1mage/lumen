@@ -9,6 +9,8 @@ import { AILogo } from "@renderer/components/ui/ai-logo"
 import { useTranslation } from "react-i18next"
 import { LLMMessage, LLMRole, LumenCoreState } from "@shared/types"
 import { logger } from "@renderer/tools/logger"
+import { Card, CardHeader } from "../ui/card"
+import { cn } from "@renderer/tools/utils"
 
 // 渲染层扩展的消息类型（带 UI 元数据）
 interface UIMessage extends LLMMessage {
@@ -136,10 +138,10 @@ export function AIChatPanel() {
   }
 
   return (
-    <div className="relative flex h-full flex-col bg-card">
+    <Card className={cn("relative flex h-full flex-col border-0")}>
       {/* Loading Container - 覆盖整个 Chat Panel */}
       {!isLoaded && !error && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-card">
+        <div className="absolute inset-0 z-10 flex items-center justify-center">
           {/* Logo 和文字作为整体进行动画 */}
           <div
             className={`flex flex-col items-center space-y-6 transition-all ${avatarStage === 'enlarge' ? 'animate-loading-enlarge' :
@@ -196,9 +198,11 @@ export function AIChatPanel() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4">
-        <h2 className="text-xl font-semibold text-foreground">{t('chat_panel.title')}</h2>
-      </div>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-foreground">{t('chat_panel.title')}</h2>
+        </div>
+      </CardHeader>
 
       {/* Messages */}
       <AIChatMessagesPanel
@@ -211,6 +215,6 @@ export function AIChatPanel() {
         onSendMessage={handleSendMessage}
         onQuickAction={handleQuickAction}
       />
-    </div>
+    </Card>
   )
 }

@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react"
-import { Sun, Moon, Monitor, ChevronRight } from "lucide-react"
-import { cn } from "@renderer/tools/utils"
+import { Sun, Moon, Monitor } from "lucide-react"
 import { SettingsItem } from "./settings-item"
 import { useTranslation } from "react-i18next"
+import { cn } from "@renderer/tools/utils"
 
 export function SettingsThemeItem() {
     const [theme, setTheme] = useState<'system' | 'light' | 'dark'>('dark')
-    const [showPopover, setShowPopover] = useState(false)
+    const [isOpen, setIsOpen] = useState(false)
     const { t } = useTranslation()
 
     useEffect(() => {
@@ -42,7 +42,7 @@ export function SettingsThemeItem() {
     const handleThemeChange = (selectedTheme: 'system' | 'light' | 'dark') => {
         setTheme(selectedTheme)
         applyTheme(selectedTheme)
-        setShowPopover(false)
+        setIsOpen(false)
 
         if (window.store_config?.setTheme) {
             window.store_config.setTheme(selectedTheme)
@@ -57,59 +57,71 @@ export function SettingsThemeItem() {
         }
     }
 
+    const getThemeIcon = () => {
+        switch (theme) {
+            case 'system': return <Monitor className="h-4 w-4" />
+            case 'light': return <Sun className="h-4 w-4" />
+            case 'dark': return <Moon className="h-4 w-4" />
+        }
+    }
+
     return (
         <SettingsItem label={t('settings_page.dark_mode')}>
             <div className="relative">
                 <button
-                    className="flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-all"
-                    onClick={() => setShowPopover(!showPopover)}
+                    onClick={() => setIsOpen(!isOpen)}
+                    className={cn(
+                        "flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm",
+                        "hover:bg-accent hover:text-accent-foreground",
+                        "dark:border-border/50"
+                    )}
                 >
-                    <span className="text-foreground">{getThemeLabel()}</span>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    {getThemeIcon()}
+                    <span>{getThemeLabel()}</span>
                 </button>
 
-                {showPopover && (
+                {isOpen && (
                     <>
                         <div
-                            className="fixed inset-0 z-40"
-                            onClick={() => setShowPopover(false)}
+                            className="fixed inset-0 z-10"
+                            onClick={() => setIsOpen(false)}
                         />
-                        <div className="absolute right-0 top-full mt-2 z-50 w-48 rounded-xl border border-border bg-card p-1.5 shadow-lg">
+                        <div className={cn(
+                            "absolute right-0 top-full mt-2 z-20 min-w-[160px] rounded-md border bg-popover p-1 shadow-md",
+                            "dark:border-border/50 dark:bg-popover"
+                        )}>
                             <button
-                                className={cn(
-                                    "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                                    theme === 'system'
-                                        ? "bg-accent text-accent-foreground"
-                                        : "hover:bg-accent/50 text-foreground"
-                                )}
                                 onClick={() => handleThemeChange('system')}
+                                className={cn(
+                                    "flex w-full items-center gap-2 rounded px-3 py-2 text-sm mb-0.5",
+                                    "hover:bg-accent hover:text-accent-foreground",
+                                    theme === 'system' && "bg-accent text-accent-foreground"
+                                )}
                             >
                                 <Monitor className="h-4 w-4" />
-                                <span>{t('settings_page.theme_options.system')}</span>
+                                {t('settings_page.theme_options.system')}
                             </button>
                             <button
-                                className={cn(
-                                    "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                                    theme === 'light'
-                                        ? "bg-accent text-accent-foreground"
-                                        : "hover:bg-accent/50 text-foreground"
-                                )}
                                 onClick={() => handleThemeChange('light')}
+                                className={cn(
+                                    "flex w-full items-center gap-2 rounded px-3 py-2 text-sm mb-0.5",
+                                    "hover:bg-accent hover:text-accent-foreground",
+                                    theme === 'light' && "bg-accent text-accent-foreground"
+                                )}
                             >
                                 <Sun className="h-4 w-4" />
-                                <span>{t('settings_page.theme_options.light')}</span>
+                                {t('settings_page.theme_options.light')}
                             </button>
                             <button
-                                className={cn(
-                                    "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                                    theme === 'dark'
-                                        ? "bg-accent text-accent-foreground"
-                                        : "hover:bg-accent/50 text-foreground"
-                                )}
                                 onClick={() => handleThemeChange('dark')}
+                                className={cn(
+                                    "flex w-full items-center gap-2 rounded px-3 py-2 text-sm",
+                                    "hover:bg-accent hover:text-accent-foreground",
+                                    theme === 'dark' && "bg-accent text-accent-foreground"
+                                )}
                             >
                                 <Moon className="h-4 w-4" />
-                                <span>{t('settings_page.theme_options.dark')}</span>
+                                {t('settings_page.theme_options.dark')}
                             </button>
                         </div>
                     </>

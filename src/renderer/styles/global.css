@@ -3,171 +3,136 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-    /* --- 核心底色：柔和不刺眼 --- */
-    /* L=0.92 提供了类似高档纸张的质感，260 色相带来淡雅的冷色调 */
-    --background: oklch(0.92 0.01 260);
-    --foreground: oklch(0.25 0.02 260);
+    --radius: 0.65rem;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.141 0.005 285.823);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.141 0.005 285.823);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.141 0.005 285.823);
 
-    /* 卡片稍微亮一点点，形成视觉上的层级感 */
-    --card: oklch(0.96 0.005 260);
-    --card-foreground: oklch(0.25 0.02 260);
+    /* 重构：金融绿 (Emerald Finance) */
+    --primary: oklch(0.52 0.18 152);
+    /* 专业、高对比度绿 */
+    --primary-foreground: oklch(0.98 0.01 152);
 
-    --popover: oklch(0.96 0.005 260);
-    --popover-foreground: oklch(0.25 0.02 260);
+    --secondary: oklch(0.967 0.001 286.375);
+    --secondary-foreground: oklch(0.21 0.006 285.885);
+    --muted: oklch(0.967 0.001 286.375);
+    --muted-foreground: oklch(0.552 0.016 285.938);
+    --accent: oklch(0.967 0.001 286.375);
+    --accent-foreground: oklch(0.21 0.006 285.885);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.92 0.004 286.32);
+    --input: oklch(0.92 0.004 286.32);
+    --ring: oklch(0.52 0.18 152 / 0.4);
 
-    /* 设置卡片：比主卡片稍深，形成明显区分 */
-    --settings-card: oklch(0.94 0.005 260);
-    --settings-card-foreground: oklch(0.25 0.02 260);
+    /* 股票涨跌业务色 */
+    --up: oklch(0.62 0.19 145);
+    /* 增长 */
+    --down: oklch(0.60 0.20 25);
+    /* 下跌 */
 
-    /* 品牌色：更有质感的森林绿（涨）与胭脂红（跌） */
-    --primary: oklch(0.55 0.15 150);
-    --primary-foreground: oklch(0.98 0 0);
+    --chart-1: oklch(0.52 0.18 152);
+    /* 图表主色同步 */
+    --chart-2: oklch(0.606 0.25 292.717);
+    --chart-3: oklch(0.541 0.281 293.009);
+    --chart-4: oklch(0.491 0.27 292.581);
+    --chart-5: oklch(0.432 0.232 292.759);
 
-    --secondary: oklch(0.88 0.01 260);
-    --secondary-foreground: oklch(0.25 0.02 260);
-
-    --muted: oklch(0.88 0.01 260);
-    --muted-foreground: oklch(0.45 0.02 260);
-
-    --accent: oklch(0.88 0.01 260);
-    --accent-foreground: oklch(0.25 0.02 260);
-
-    /* 按钮禁用状态 */
-    --button-disabled: oklch(0.6 0.0 0);
-    --button-disabled-foreground: oklch(0.4 0.0 0);
-
-    --destructive: oklch(0.55 0.18 25);
-    --destructive-foreground: oklch(0.98 0 0);
-
-    /* 边框：适度加深，确保在非白底色下依然清晰 */
-    --border: oklch(0.84 0.01 260);
-    --input: oklch(0.84 0.01 260);
-    --ring: oklch(0.55 0.15 150);
-
-    /* 图表配色调整 */
-    --chart-1: oklch(0.6 0.15 150);
-    --chart-2: oklch(0.55 0.18 25);
-    --chart-3: oklch(0.5 0.12 260);
-    --chart-4: oklch(0.7 0.15 80);
-    --chart-5: oklch(0.65 0.15 40);
-
-    /* 圆角：恢复 10px 现代质感 */
-    --radius: 0.625rem;
-
-    /* 侧边栏：稍微加深以区分主区域 */
-    --sidebar: oklch(0.9 0.01 260);
-    --sidebar-foreground: oklch(0.25 0.02 260);
-    --sidebar-primary: oklch(0.55 0.15 150);
-    --sidebar-primary-foreground: oklch(0.98 0 0);
-    --sidebar-accent: oklch(0.86 0.01 260);
-    --sidebar-accent-foreground: oklch(0.25 0.02 260);
-    --sidebar-border: oklch(0.84 0.01 260);
-    --sidebar-ring: oklch(0.55 0.15 150);
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.141 0.005 285.823);
+    --sidebar-primary: oklch(0.52 0.18 152);
+    --sidebar-primary-foreground: oklch(0.98 0.01 152);
+    --sidebar-accent: oklch(0.967 0.001 286.375);
+    --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+    --sidebar-border: oklch(0.92 0.004 286.32);
+    --sidebar-ring: oklch(0.52 0.18 152 / 0.4);
 }
 
 .dark {
-    /* --- 背景：不再是死黑，而是带有极深蓝调的深夜色 --- */
-    --background: oklch(0.12 0.015 260);
-    --foreground: oklch(0.92 0.01 260);
-    /* 柔和的银白，不刺眼 */
+    --background: oklch(0.141 0.005 285.823);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.21 0.006 285.885);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.21 0.006 285.885);
+    --popover-foreground: oklch(0.985 0 0);
 
-    /* --- 容器：通过亮度提升产生"悬浮"在背景上的感觉 --- */
-    --card: oklch(0.17 0.015 260);
-    --card-foreground: oklch(0.92 0.01 260);
+    /* 重构：深色模式金融绿 (带有荧光感的 AI 绿) */
+    --primary: oklch(0.72 0.22 150);
+    --primary-foreground: oklch(0.15 0.05 150);
 
-    --popover: oklch(0.17 0.015 260);
-    --popover-foreground: oklch(0.92 0.01 260);
+    --secondary: oklch(0.274 0.006 286.033);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.274 0.006 286.033);
+    --muted-foreground: oklch(0.705 0.015 286.067);
+    --accent: oklch(0.274 0.006 286.033);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.72 0.22 150 / 0.4);
 
-    /* 设置卡片：暗黑模式下更亮的卡片，形成对比 */
-    --settings-card: oklch(0.2 0.015 260);
-    --settings-card-foreground: oklch(0.92 0.01 260);
+    --up: oklch(0.75 0.21 150);
+    --down: oklch(0.65 0.22 30);
 
-    /* --- 品牌色：暗黑模式下的 primary 应该更有“发光感” --- */
-    --primary: oklch(0.7 0.18 150);
-    /* 亮丽的电光绿 */
-    --primary-foreground: oklch(0.1 0 0);
+    --chart-1: oklch(0.72 0.22 150);
+    --chart-2: oklch(0.606 0.25 292.717);
+    --chart-3: oklch(0.541 0.281 293.009);
+    --chart-4: oklch(0.491 0.27 292.581);
+    --chart-5: oklch(0.432 0.232 292.759);
 
-    --secondary: oklch(0.22 0.02 260);
-    --secondary-foreground: oklch(0.92 0.01 260);
-
-    --muted: oklch(0.22 0.02 260);
-    --muted-foreground: oklch(0.65 0.02 260);
-
-    --accent: oklch(0.25 0.02 260);
-    /* 悬浮态稍亮 */
-    --accent-foreground: oklch(0.95 0.01 260);
-
-    /* 按钮禁用状态 */
-    --button-disabled: oklch(0.4 0.0 0);
-    --button-disabled-foreground: oklch(0.7 0.0 0);
-
-    /* --- 涨跌色：针对黑底优化，增加荧光感 --- */
-    --destructive: oklch(0.6 0.18 25);
-    /* 亮珊瑚红 */
-    --destructive-foreground: oklch(1 0 0);
-
-    /* --- 线条：极低对比度，若隐若现 --- */
-    --border: oklch(0.22 0.02 260);
-    --input: oklch(0.22 0.02 260);
-    --ring: oklch(0.7 0.18 150);
-
-    /* --- 侧边栏：比主背景更深一点，产生深度的纵深感 --- */
-    --sidebar: oklch(0.09 0.015 260);
-    --sidebar-foreground: oklch(0.92 0.01 260);
-    --sidebar-primary: oklch(0.7 0.18 150);
-    --sidebar-primary-foreground: oklch(0.1 0 0);
-    --sidebar-accent: oklch(0.17 0.015 260);
-    --sidebar-accent-foreground: oklch(0.95 0.01 260);
-    --sidebar-border: oklch(0.15 0.015 260);
-    --sidebar-ring: oklch(0.7 0.18 150);
-
-    --radius: 0.625rem;
+    --sidebar: oklch(0.21 0.006 285.885);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.72 0.22 150);
+    --sidebar-primary-foreground: oklch(0.15 0.05 150);
+    --sidebar-accent: oklch(0.274 0.006 286.033);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.72 0.22 150 / 0.4);
 }
 
 @theme {
-    --font-sans: 'Geist', 'Geist Fallback';
-    --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+    /* --- 基础配置 --- */
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(0.5rem - 4px);
 
+    /* --- 颜色映射 (Shadcn UI 规范) --- */
     --color-background: var(--background);
     --color-foreground: var(--foreground);
     --color-card: var(--card);
     --color-card-foreground: var(--card-foreground);
     --color-popover: var(--popover);
     --color-popover-foreground: var(--popover-foreground);
+
     --color-primary: var(--primary);
     --color-primary-foreground: var(--primary-foreground);
     --color-secondary: var(--secondary);
     --color-secondary-foreground: var(--secondary-foreground);
+
     --color-muted: var(--muted);
     --color-muted-foreground: var(--muted-foreground);
     --color-accent: var(--accent);
     --color-accent-foreground: var(--accent-foreground);
 
-    /* 按钮禁用状态 */
-    --color-button-disabled: var(--button-disabled);
-    --color-button-disabled-foreground: var(--button-disabled-foreground);
-
-    /* 涨跌色 */
     --color-destructive: var(--destructive);
-    --color-destructive-foreground: var(--destructive-foreground);
-    --color-settings-card: var(--settings-card);
-    --color-settings-card-foreground: var(--settings-card-foreground);
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
 
+    /* --- 金融业务专用颜色 --- */
+    --color-up: var(--up);
+    --color-down: var(--down);
+
+    /* --- 图表颜色同步 --- */
     --color-chart-1: var(--chart-1);
     --color-chart-2: var(--chart-2);
     --color-chart-3: var(--chart-3);
     --color-chart-4: var(--chart-4);
     --color-chart-5: var(--chart-5);
 
-    /* 修正圆角映射 */
-    --radius-sm: calc(var(--radius) - 4px);
-    --radius-md: calc(var(--radius) - 2px);
-    --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) + 4px);
-
+    /* --- Sidebar 适配 --- */
     --color-sidebar: var(--sidebar);
     --color-sidebar-foreground: var(--sidebar-foreground);
     --color-sidebar-primary: var(--sidebar-primary);
@@ -176,19 +141,21 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
-
-    /* 额外推荐：亮色模式下的微弱阴影，增强层级感 */
-    --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.04);
-    --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 0.06);
 }
 
+/* --- Electron 专用优化 --- */
 @layer base {
-    * {
-        @apply border-border;
+    body {
+        @apply antialiased select-none;
+        /* 桌面端禁止选中文本 */
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
-    body {
-        @apply bg-background text-foreground transition-colors duration-300;
+    /* 允许在消息内容和输入框内选择文字 */
+    .select-text,
+    input,
+    textarea {
+        @apply select-text;
     }
 }
 

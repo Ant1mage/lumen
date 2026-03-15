@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react"
-import { Languages, ChevronRight } from "lucide-react"
-import { cn } from "@renderer/tools/utils"
+import { Languages } from "lucide-react"
 import { SettingsItem } from "./settings-item"
 import { useTranslation } from "react-i18next"
 import { logger } from "@renderer/tools/logger"
+import { cn } from "@renderer/tools/utils"
 
 export function SettingsLanguageItem() {
     const [language, setLanguage] = useState<'zh-CN' | 'en-US'>('zh-CN')
-    const [showPopover, setShowPopover] = useState(false)
+    const [isOpen, setIsOpen] = useState(false)
     const { t, i18n } = useTranslation()
 
     useEffect(() => {
@@ -17,7 +17,7 @@ export function SettingsLanguageItem() {
                 if (settings.language) {
                     const lang = settings.language as 'zh-CN' | 'en-US'
                     setLanguage(lang)
-                    await i18n.changeLanguage(lang)
+                    // 不要在这里立即调用 i18n.changeLanguage，避免闪烁
                 }
             }
         }
@@ -26,7 +26,7 @@ export function SettingsLanguageItem() {
 
     const handleLanguageChange = async (selectedLang: 'zh-CN' | 'en-US') => {
         setLanguage(selectedLang)
-        setShowPopover(false)
+        setIsOpen(false)
 
         // 更新 i18next 的语言设置
         await i18n.changeLanguage(selectedLang)
@@ -39,47 +39,56 @@ export function SettingsLanguageItem() {
         logger.info(`语言已切换为：${selectedLang}`, 'Settings')
     }
 
+    const getLanguageIcon = () => {
+        return <Languages className="h-4 w-4" />
+    }
+
     return (
         <SettingsItem label={t('settings_page.language')}>
             <div className="relative">
                 <button
-                    className="flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-all"
-                    onClick={() => setShowPopover(!showPopover)}
+                    onClick={() => setIsOpen(!isOpen)}
+                    className={cn(
+                        "flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm",
+                        "hover:bg-accent hover:text-accent-foreground",
+                        "dark:border-border/50"
+                    )}
                 >
-                    <span className="text-foreground">{language === 'zh-CN' ? '简体中文' : 'English'}</span>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    {getLanguageIcon()}
+                    <span>{language === 'zh-CN' ? '简体中文' : 'English'}</span>
                 </button>
 
-                {showPopover && (
+                {isOpen && (
                     <>
                         <div
-                            className="fixed inset-0 z-40"
-                            onClick={() => setShowPopover(false)}
+                            className="fixed inset-0 z-10"
+                            onClick={() => setIsOpen(false)}
                         />
-                        <div className="absolute right-0 top-full mt-2 z-50 w-48 rounded-xl border border-border bg-card p-1.5 shadow-lg">
+                        <div className={cn(
+                            "absolute right-0 top-full mt-2 z-20 min-w-[160px] rounded-md border bg-popover p-1 shadow-md",
+                            "dark:border-border/50 dark:bg-popover"
+                        )}>
                             <button
-                                className={cn(
-                                    "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                                    language === 'zh-CN'
-                                        ? "bg-accent text-accent-foreground"
-                                        : "hover:bg-accent/50 text-foreground"
-                                )}
                                 onClick={() => handleLanguageChange('zh-CN')}
+                                className={cn(
+                                    "flex w-full items-center gap-2 rounded px-3 py-2 text-sm mb-0.5",
+                                    "hover:bg-accent hover:text-accent-foreground",
+                                    language === 'zh-CN' && "bg-accent text-accent-foreground"
+                                )}
                             >
                                 <Languages className="h-4 w-4" />
-                                <span>简体中文</span>
+                                简体中文
                             </button>
                             <button
-                                className={cn(
-                                    "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                                    language === 'en-US'
-                                        ? "bg-accent text-accent-foreground"
-                                        : "hover:bg-accent/50 text-foreground"
-                                )}
                                 onClick={() => handleLanguageChange('en-US')}
+                                className={cn(
+                                    "flex w-full items-center gap-2 rounded px-3 py-2 text-sm",
+                                    "hover:bg-accent hover:text-accent-foreground",
+                                    language === 'en-US' && "bg-accent text-accent-foreground"
+                                )}
                             >
                                 <Languages className="h-4 w-4" />
-                                <span>English</span>
+                                English
                             </button>
                         </div>
                     </>
