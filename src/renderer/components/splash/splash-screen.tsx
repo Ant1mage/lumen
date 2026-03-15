@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Sparkles, RotateCcw } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@renderer/components/ui/button"
+import { logger } from "@renderer/tools/logger"
 
 interface SplashScreenProps {
     onComplete: () => void
@@ -22,7 +23,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
 
     // 启动时才开始加载 LumenCore
     useEffect(() => {
-        console.log('SplashScreen: 开始加载 LumenCore')
+        logger.info('开始加载 LumenCore', 'SplashScreen')
         setHasStarted(true)
         setStatus(i18n.t('splash.initializing'))
 
@@ -39,12 +40,12 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
     }, []) // 移除 t 依赖
 
     useEffect(() => {
-        console.log('SplashScreen: useEffect 初始化，window.lumen_core =', !!window.lumen_core)
+        logger.debug('useEffect 初始化', 'SplashScreen', { hasLumenCore: !!window.lumen_core })
 
         // 监听 LumenCore 初始化状态
         if (window.lumen_core && hasStarted) {
             const unsubscribe = window.lumen_core.onStateChange((state) => {
-                console.log('SplashScreen: 收到状态更新', state)
+                logger.debug('收到状态更新', 'SplashScreen', state)
 
                 // 根据状态更新进度条和文字
                 switch (state.status) {
@@ -55,7 +56,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
                         break
                     case 'ready':
                         // 准备就绪 - 开始淡出动画
-                        console.log('SplashScreen: 系统已就绪，开始淡出')
+                        logger.info('系统已就绪，开始淡出', 'SplashScreen')
                         setProgress(100)
                         setStatus(i18n.t('splash.ready'))
 
@@ -81,14 +82,14 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
 
                         // 第 4 步：完全隐藏（再等 1 秒）
                         setTimeout(() => {
-                            console.log('SplashScreen: 执行隐藏')
+                            logger.info('执行隐藏', 'SplashScreen')
                             setIsVisible(false)
                             onComplete()
                         }, 2450) // 1400ms + 1000ms + 50ms 缓冲
                         break
                     case 'error':
                         // 错误状态
-                        console.error('SplashScreen: 初始化错误', state.error)
+                        logger.error(`初始化错误：${state.error}`, 'SplashScreen')
                         setIsError(true)
                         setStatus(i18n.t('splash.error'))
                         setProgress(0)
@@ -97,18 +98,18 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             })
 
             return () => {
-                console.log('SplashScreen: 清理监听器')
+                logger.debug('清理监听器', 'SplashScreen')
                 unsubscribe()
             }
         } else if (!hasStarted) {
-            console.log('SplashScreen: 等待启动...')
+            logger.debug('等待启动...', 'SplashScreen')
         } else {
-            console.warn('SplashScreen: window.lumen_core 不存在')
+            logger.warn('window.lumen_core 不存在', 'SplashScreen')
         }
     }, [onComplete, hasStarted]) // 移除 t 依赖
 
     const handleRetry = async () => {
-        console.log('SplashScreen: 重试加载 LumenCore')
+        logger.info('重试加载 LumenCore', 'SplashScreen')
         setIsRetrying(true)
         setIsError(false)
         setProgress(0)
@@ -120,7 +121,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             // 调用主进程的重新初始化接口
             if (window.lumen_core?.reinitialize) {
                 const result = await window.lumen_core.reinitialize()
-                console.log('LumenCore 重新初始化结果:', result)
+                logger.info(`LumenCore 重新初始化结果：${JSON.stringify(result)}`, 'SplashScreen')
                 if (!result.success) {
                     throw new Error(result.error)
                 }
@@ -128,7 +129,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
                 throw new Error('lumen_core.reinitialize not available')
             }
         } catch (error) {
-            console.error('SplashScreen: 重试失败', error)
+            logger.error(`重试失败：${error}`, 'SplashScreen')
             setIsError(true)
             setStatus(i18n.t('splash.error'))
             setProgress(0)
@@ -148,8 +149,8 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
                 {/* AI Avatar - 顺时针旋转动画 */}
                 <div
                     className={`transition-all ${avatarStage === 'enlarge' ? 'animate-splash-enlarge' :
-                            avatarStage === 'shrink' ? 'animate-splash-shrink' :
-                                ''
+                        avatarStage === 'shrink' ? 'animate-splash-shrink' :
+                            ''
                         }`}
                 >
                     <Sparkles

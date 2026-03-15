@@ -5,7 +5,7 @@ import LLMPath from "@main/lumen_core/ai/llm-path";
 import DatabaseEngine from "@main/lumen_core/db/database-engine";
 // 引入规范化的日志服务和类型
 import { LLMRole, LLMMessage, LumenCoreStatus, LumenCoreState } from "@shared/types";
-import { logger } from "@main/lumen_core/tools/logger";
+import { logger } from "@main/tools/logger";
 import PromptTool from "@main/lumen_core/tools/prompt-tool";
 import { systemMonitor } from "@main/lumen_core/tools/system-monitor";
 

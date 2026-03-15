@@ -1,8 +1,8 @@
 import Database from "better-sqlite3";
 import path from "path";
 import { app } from "electron";
-import { DocumentData, StockData } from "./database-model";
-import { logger } from "../tools/logger";
+import { DocumentData, StockData } from "@main/lumen_core/db/database-model";
+import { logger } from "@main/tools/logger";
 
 class DatabaseEngine {
   private _db: Database.Database | null = null;

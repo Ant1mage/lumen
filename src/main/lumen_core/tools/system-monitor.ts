@@ -1,4 +1,4 @@
-import { logger } from "./logger";
+import { logger } from "@main/tools/logger";
 import * as os from "os";
 
 export interface SystemInfo {
@@ -10,7 +10,7 @@ export interface SystemInfo {
   machineType: MachineType;
 }
 
-export type MachineType = 
+export type MachineType =
   | "apple_silicon_high"      // M1/M2/M3 Max/Ultra
   | "apple_silicon_mid"       // M1/M2/M3 Pro
   | "apple_silicon_base"      // M1/M2/M3 基础版
@@ -22,7 +22,7 @@ export class SystemMonitor {
   private static instance: SystemMonitor;
   private _systemInfo: SystemInfo | null = null;
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): SystemMonitor {
     if (!SystemMonitor.instance) {
@@ -58,17 +58,17 @@ export class SystemMonitor {
         try {
           const { stdout } = await execPromise("uname -m");
           const architecture = stdout.trim();
-          
+
           if (architecture === "arm64") {
             isAppleSilicon = true;
-            
+
             // 通过 sysctl 检测具体型号
             try {
               const { stdout: modelOutput } = await execPromise(
                 "sysctl -n machdep.cpu.brand_string"
               );
               const cpuModel = modelOutput.toLowerCase();
-              
+
               // 根据内存和 CPU 核心数判断机型档次
               if (cpuModel.includes("max") || cpuModel.includes("ultra")) {
                 machineType = "apple_silicon_high";
@@ -77,7 +77,7 @@ export class SystemMonitor {
               } else {
                 machineType = "apple_silicon_base";
               }
-              
+
               // 如果无法通过 CPU 名称判断，则根据内存判断
               if (totalMemoryGB >= 64) {
                 machineType = "apple_silicon_high";
@@ -128,7 +128,7 @@ export class SystemMonitor {
       return this._systemInfo;
     } catch (error) {
       logger.error("获取系统信息失败", error);
-      
+
       // 返回保守的默认值
       return {
         platform: process.platform,

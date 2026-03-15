@@ -4,6 +4,7 @@ import { NewsFeedPanel } from "@renderer/components/news/news-feed-panel";
 import { StockPanel } from "@renderer/components/stock/stock-panel";
 import { useEffect, useState } from "react";
 import i18n from "@renderer/config/i18n";
+import { logger } from "@renderer/tools/logger";
 
 
 
@@ -21,7 +22,7 @@ export default function Dashboard() {
 
       if (window.store_config?.getLanguage) {
         const savedLanguage = await window.store_config.getLanguage()
-        console.log('App 加载时的语言设置:', savedLanguage)
+        logger.info(`App 加载时的语言设置：${savedLanguage}`, 'App')
         // 使用 i18next 的 changeLanguage 方法切换语言
         await i18n.changeLanguage(savedLanguage)
       }

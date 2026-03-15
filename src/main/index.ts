@@ -3,6 +3,7 @@ import path from 'path';
 import { registerIpcHandlers } from '@main/ipc/handlers';
 import LumenCore from '@main/lumen_core/lumen-core';
 import { LumenCoreService } from '@main/services/lumen-core.service';
+import { logger } from '@main/tools/logger';
 
 let mainWindow: BrowserWindow | null = null;
 let lumenCore: LumenCore | null = null;
@@ -51,7 +52,7 @@ function createWindow() {
   }
 
   // 设置初始语言
-  console.log('启动时语言设置:', language);
+  logger.info(`启动时语言设置：${language}`, 'MAIN');
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -70,7 +71,7 @@ app.whenReady().then(async () => {
 
   // 启动初始化（异步，不阻塞）
   lumenCore.initEngine().catch(err => {
-    console.error('LumenCore 初始化失败:', err);
+    logger.error(`LumenCore 初始化失败：${err}`, 'MAIN');
   });
 
   app.on('activate', () => {

@@ -41,3 +41,43 @@ export interface LumenCoreState {
   error?: string;
   progress?: string;
 }
+
+/**
+ * 日志级别枚举
+ * 用于统一日志的严重程度分类
+ */
+export enum LogLevel {
+  Debug = 'debug',
+  Info = 'info',
+  Warn = 'warn',
+  Error = 'error',
+}
+
+/**
+ * 日志来源枚举
+ * 标识日志来自哪个进程或模块
+ */
+export enum LogSource {
+  Main = 'Main',
+  Renderer = 'Renderer',
+  Preload = 'Preload',
+}
+
+/**
+ * 日志负载接口
+ * 用于在进程间传输日志信息
+ */
+export interface LogPayload {
+  /** 日志级别 */
+  level: LogLevel;
+  /** 日志消息内容 */
+  message: string;
+  /** 日志来源（进程/模块） */
+  source: LogSource;
+  /** 上下文标签（可选） */
+  context?: string;
+  /** 时间戳（ISO 格式） */
+  timestamp: string;
+  /** 附加数据（可选） */
+  data?: any;
+}

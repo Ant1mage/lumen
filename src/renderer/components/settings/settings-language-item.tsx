@@ -3,6 +3,7 @@ import { Languages, ChevronRight } from "lucide-react"
 import { cn } from "@renderer/tools/utils"
 import { SettingsItem } from "./settings-item"
 import { useTranslation } from "react-i18next"
+import { logger } from "@renderer/tools/logger"
 
 export function SettingsLanguageItem() {
     const [language, setLanguage] = useState<'zh-CN' | 'en-US'>('zh-CN')
@@ -35,7 +36,7 @@ export function SettingsLanguageItem() {
             window.store_config.setLanguage(selectedLang)
         }
 
-        console.log('语言已切换为:', selectedLang)
+        logger.info(`语言已切换为：${selectedLang}`, 'Settings')
     }
 
     return (

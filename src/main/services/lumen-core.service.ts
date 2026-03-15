@@ -2,6 +2,7 @@ import LumenCore from '@main/lumen_core/lumen-core';
 import { BrowserWindow, ipcMain } from 'electron';
 import { LUMEN_CORE_CHANNELS } from '@shared/channels';
 import { LumenCoreState } from '@shared/types';
+import { logger } from '@main/tools/logger';
 
 /**
  * LumenCore 状态管理服务
@@ -30,23 +31,23 @@ export class LumenCoreService {
     // 订阅状态变化并转发给所有监听器
     if (lumenCore) {
       lumenCore.onStateChange((state: LumenCoreState) => {
-        console.log('LumenCoreService: 收到状态更新', state)
+        logger.info(`收到状态更新：${JSON.stringify(state)}`, 'LumenCoreService')
 
         this._stateListeners.forEach(listener => {
           try {
             listener(state);
           } catch (error) {
-            console.error('LumenCoreService: 状态监听器执行失败', error);
+            logger.error(`状态监听器执行失败：${error}`, 'LumenCoreService');
           }
         });
 
         // 发送到渲染进程
         const windows = BrowserWindow.getAllWindows();
         if (windows.length > 0) {
-          console.log('LumenCoreService: 发送状态到渲染进程', state)
+          logger.info(`发送状态到渲染进程：${JSON.stringify(state)}`, 'LumenCoreService')
           windows[0].webContents.send(LUMEN_CORE_CHANNELS.STATE_CHANGE, state);
         } else {
-          console.warn('LumenCoreService: 没有找到任何窗口')
+          logger.warn('没有找到任何窗口', 'LumenCoreService')
         }
       });
     }

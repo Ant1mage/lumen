@@ -1,6 +1,6 @@
-import LLMEngine from "../ai/llm-engine";
-import DatabaseEngine from "../db/database-engine";
-import { logger } from "../tools/logger";
+import LLMEngine from "@main/lumen_core/ai/llm-engine";
+import DatabaseEngine from "@main/lumen_core/db/database-engine";
+import { logger } from "@main/tools/logger";
 
 export interface RAGDocument {
   id?: number;

@@ -7,8 +7,8 @@ import type {
   Token,
 } from "node-llama-cpp" with { "resolution-mode": "import" };
 import * as fs from "fs";
-import { LLMModelConfig } from "./llm-config";
-import { logger } from "../tools/logger";
+import { LLMModelConfig } from "@main/lumen_core/ai/llm-config";
+import { logger } from "@main/tools/logger";
 
 class LLMEngine {
   private _model: LlamaModel | null = null;

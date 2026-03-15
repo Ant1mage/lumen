@@ -7,6 +7,7 @@ import { AIChatInputPanel } from "./ai-chat-input-panel"
 import { Button } from "@renderer/components/ui/button"
 import { useTranslation } from "react-i18next"
 import { LLMMessage, LLMRole, LumenCoreState } from "@shared/types"
+import { logger } from "@renderer/tools/logger"
 
 // 渲染层扩展的消息类型（带 UI 元数据）
 interface UIMessage extends LLMMessage {
@@ -27,7 +28,7 @@ export function AIChatPanel() {
   useEffect(() => {
     if (window.lumen_core) {
       const unsubscribe = window.lumen_core.onStateChange((state: LumenCoreState) => {
-        console.log('AIChatPanel: LumenCore 状态变化', state)
+        logger.debug('LumenCore 状态变化', 'AIChatPanel', state)
 
         switch (state.status) {
           case 'initializing':
@@ -49,7 +50,7 @@ export function AIChatPanel() {
             break
           case 'error':
             // 加载失败：显示错误信息，停止动画
-            console.error('LumenCore 初始化失败:', state.error)
+            logger.error(`LumenCore 初始化失败：${state.error}`, 'AIChatPanel')
             setError(state.error || t('chat_panel.init_error'))
             // 停止动画，恢复正常状态
             setAvatarStage('normal')
@@ -59,7 +60,7 @@ export function AIChatPanel() {
 
       return () => unsubscribe()
     } else {
-      console.warn('AIChatPanel: window.lumen_core not available')
+      logger.warn('window.lumen_core not available', 'AIChatPanel')
     }
   }, [])
 
@@ -105,7 +106,7 @@ export function AIChatPanel() {
       const result = await window.lumen_core.sendMessage(content)
 
       if (!result.success) {
-        console.error('发送消息失败:', result.error)
+        logger.error(`发送消息失败：${result.error}`, 'AIChatPanel')
         // 在 AI 消息中显示错误
         setMessages(prev => prev.map(msg =>
           msg.id === aiMessageId
@@ -117,7 +118,7 @@ export function AIChatPanel() {
       // 清理 token 监听器
       unsubscribeToken()
     } catch (error) {
-      console.error('消息发送异常:', error)
+      logger.error(`消息发送异常：${error}`, 'AIChatPanel')
       setMessages(prev => prev.map(msg =>
         msg.id === aiMessageId
           ? { ...msg, content: `Error: ${String(error)}` }
@@ -129,7 +130,7 @@ export function AIChatPanel() {
   }
 
   const handleQuickAction = (action: string) => {
-    console.log('Quick action clicked:', action)
+    logger.debug(`快速操作：${action}`, 'AIChatPanel')
     // TODO: Implement quick action logic
   }
 

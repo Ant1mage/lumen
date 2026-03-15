@@ -38,17 +38,21 @@ export const VIEW_CHANNELS = {
   },
 } as const;
 
+// ==================== 4. 跨进程日志模块 ====================
+export const IPC_LOG_ACTION = 'ipc-log-action' as const;
+
 // ==================== 聚合所有通道 ====================
 /**
  * 所有 IPC 通道的联合类型
  * 用于类型检查和验证
  */
-export type IpcChannel = 
+export type IpcChannel =
   | typeof STORE_CONFIG_CHANNELS.THEME[keyof typeof STORE_CONFIG_CHANNELS.THEME]
   | typeof STORE_CONFIG_CHANNELS.LANGUAGE[keyof typeof STORE_CONFIG_CHANNELS.LANGUAGE]
   | typeof STORE_CONFIG_CHANNELS.SETTINGS[keyof typeof STORE_CONFIG_CHANNELS.SETTINGS]
   | typeof LUMEN_CORE_CHANNELS[keyof typeof LUMEN_CORE_CHANNELS]
-  | typeof VIEW_CHANNELS.SIDEBAR[keyof typeof VIEW_CHANNELS.SIDEBAR];
+  | typeof VIEW_CHANNELS.SIDEBAR[keyof typeof VIEW_CHANNELS.SIDEBAR]
+  | typeof IPC_LOG_ACTION;
 
 /**
  * 所有通道的集合（用于验证等场景）
