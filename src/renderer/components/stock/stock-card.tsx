@@ -45,7 +45,7 @@ export function StockCard({ name, code, price, change, sparklineData = [] }: Sto
                     : "bg-gradient-to-br from-chart-2/15 via-chart-2/8 to-transparent"
             )} />
 
-            <div className="relative flex items-start justify-between">
+            <div className="relative flex items-center justify-between">
                 <div className="space-y-1">
                     <h3 className="font-semibold text-foreground text-sm">{name}</h3>
                     <p className="text-xs text-muted-foreground">{code}</p>

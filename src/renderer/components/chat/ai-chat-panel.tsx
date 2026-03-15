@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react"
 import { AIChatMessagesPanel } from "./ai-chat-messages-panel"
 import { AIChatInputPanel } from "./ai-chat-input-panel"
 import { Button } from "@renderer/components/ui/button"
+import { AILogo } from "@renderer/components/ui/ai-logo"
 import { useTranslation } from "react-i18next"
 import { LLMMessage, LLMRole, LumenCoreState } from "@shared/types"
 import { logger } from "@renderer/tools/logger"
@@ -139,24 +140,19 @@ export function AIChatPanel() {
       {/* Loading Container - 覆盖整个 Chat Panel */}
       {!isLoaded && !error && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-card">
-          <div className="flex flex-col items-center space-y-6">
-            {/* Avatar Logo - 使用绿色 (primary) */}
-            <div
-              className={`transition-all ${avatarStage === 'enlarge' ? 'animate-loading-enlarge' :
-                avatarStage === 'shrink' ? 'animate-loading-shrink' :
-                  !isLoaded ? 'animate-pulse-fast' :
-                    ''
-                }`}
-            >
-              <Sparkles className="h-32 w-32 text-primary" />
-            </div>
-
-            {/* Status Text - 与 Logo 同步动画 */}
-            <p className={`text-center text-sm font-medium text-muted-foreground transition-all ${avatarStage === 'enlarge' ? 'animate-loading-enlarge' :
+          {/* Logo 和文字作为整体进行动画 */}
+          <div
+            className={`flex flex-col items-center space-y-6 transition-all ${avatarStage === 'enlarge' ? 'animate-loading-enlarge' :
               avatarStage === 'shrink' ? 'animate-loading-shrink' :
                 !isLoaded ? 'animate-pulse-fast' :
                   ''
-              }`}>
+              }`}
+          >
+            {/* AI Logo */}
+            <AILogo size="xl" />
+
+            {/* Status Text */}
+            <p className="text-center text-sm font-medium text-muted-foreground">
               {t('splash.initializing')}
             </p>
           </div>

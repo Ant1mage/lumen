@@ -1,5 +1,5 @@
 import { AIChatPanel } from "@renderer/components/chat/ai-chat-panel";
-import { AppSidebarPanel } from "@renderer/components/sidebar/app-sidebar-panel";
+import { SidebarPanel } from "@renderer/components/sidebar/sidebar-panel";
 import { NewsFeedPanel } from "@renderer/components/news/news-feed-panel";
 import { StockPanel } from "@renderer/components/stock/stock-panel";
 import { useEffect, useState } from "react";
@@ -8,7 +8,7 @@ import { logger } from "@renderer/tools/logger";
 
 
 
-export default function Dashboard() {
+export default function AppPanel() {
   const [theme, setTheme] = useState<'system' | 'light' | 'dark'>('system')
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function Dashboard() {
     /* Main Content - 使用固定 padding，不设置背景色 */
     <div className="flex h-screen w-full overflow-hidden p-3">
       {/* Sidebar */}
-      <AppSidebarPanel />
+      <SidebarPanel />
 
       {/* Main Content */}
       <div className="flex flex-1 gap-3 overflow-hidden">

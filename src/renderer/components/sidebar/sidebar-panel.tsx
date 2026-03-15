@@ -8,11 +8,11 @@ import {
     Flame,
     Zap,
     Settings,
-    Sparkles,
     PanelLeftClose,
     PanelLeft
 } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
+import { AILogo } from "@renderer/components/ui/ai-logo"
 import { SettingsPanel } from "@renderer/components/settings/settings-panel"
 import { useTranslation } from "react-i18next"
 
@@ -25,7 +25,7 @@ interface SidebarNavItem {
     onClick?: () => void
 }
 
-export function AppSidebarPanel() {
+export function SidebarPanel() {
     const [expanded, setExpanded] = useState(false)
     const [settingsOpen, setSettingsOpen] = useState(false)
     const [activeItem, setActiveItem] = useState<string>('a_share')
@@ -81,7 +81,7 @@ export function AppSidebarPanel() {
             {/* AI Avatar */}
             <div className="flex h-16 items-center px-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                    <Sparkles className="h-5 w-5 text-primary" />
+                    <AILogo size="sm" />
                 </div>
                 <span className={cn(
                     "whitespace-nowrap text-lg font-semibold text-foreground transition-all duration-300 overflow-hidden",

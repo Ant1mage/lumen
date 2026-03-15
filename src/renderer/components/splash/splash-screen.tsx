@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from "react"
-import { Sparkles, RotateCcw } from "lucide-react"
+import { RotateCcw } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@renderer/components/ui/button"
+import { AILogo } from "@renderer/components/ui/ai-logo"
 import { logger } from "@renderer/tools/logger"
 
 interface SplashScreenProps {
@@ -153,9 +154,9 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
                             ''
                         }`}
                 >
-                    <Sparkles
-                        className={`h-24 w-24 text-primary ${isError ? '' : 'animate-spin'
-                            }`}
+                    <AILogo
+                        size="lg"
+                        className={isError ? '' : 'animate-spin'}
                         style={{
                             animationDuration: isError ? '0s' : '2s',
                             animationTimingFunction: 'linear',

@@ -8,7 +8,7 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "build:electron": "electron-builder",
-    "clean": "rm -rf dist release build config"
+    "rebuild": "electron-rebuild -f"
   },
   "keywords": [
     "electron",
@@ -115,5 +115,12 @@
     "linux": {
       "target": "AppImage"
     }
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "better-sqlite3",
+      "node-llama-cpp"
+    ]
   }
 }
