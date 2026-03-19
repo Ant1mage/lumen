@@ -144,7 +144,7 @@ export class SystemMonitor {
   /**
    * 根据机型获取推荐的 LLM 参数
    */
-  async getRecommendedLLMParams(): Promise<{
+  async getRecommendedTranslatorParams(): Promise<{
     gpuLayers: number;
     contextSize: number;
     temperature: number;

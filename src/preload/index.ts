@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld("store_config", {
 
 // ==================== 2. LumenCore 状态监听模块 ====================
 contextBridge.exposeInMainWorld("lumen_core", {
+  getState: () => ipcRenderer.invoke(LUMEN_CORE_CHANNELS.GET_STATE),
   onStateChange: (listener: (state: any) => void) => {
     const channel = LUMEN_CORE_CHANNELS.STATE_CHANGE;
     const handler = (_event: any, state: any) => listener(state);

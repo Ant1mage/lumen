@@ -26,13 +26,6 @@ export function AIChatPanel() {
   // 启动时加载 LumenCore
   useEffect(() => {
     if (window.lumen_core) {
-      // 首先获取当前状态，避免错过已有的 ready 状态
-      window.lumen_core.getState().then((currentState) => {
-        if (currentState && currentState.status === 'ready') {
-          setIsLoaded(true);
-        }
-      });
-
       const unsubscribe = window.lumen_core.onStateChange((state: LumenCoreState) => {
         logger.debug('LumenCore 状态变化', 'AIChatPanel', state)
 

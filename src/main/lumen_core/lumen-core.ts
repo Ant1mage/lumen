@@ -73,12 +73,13 @@ class LumenCore {
       logger.info('Lumen Engine: 正在初始化核心组件...', 'LumenCore');
 
       const systemInfo = await systemMonitor.getSystemInfo();
+      const translatorParams = await systemMonitor.getRecommendedTranslatorParams();
       const embeddingParams = await systemMonitor.getRecommendedEmbeddingParams();
 
-      logger.info(
-        `根据机型 (${systemInfo.machineType}) 自动配置参数：Embedding GPU Layers=${embeddingParams.gpuLayers}, Context=${embeddingParams.contextSize}`,
-        'LumenCore',
-      );
+      // logger.info(
+      //   `根据机型 (${systemInfo.machineType})自动配置参数\n Embedding GPU Layers=${embeddingParams.gpuLayers}, Context=${embeddingParams.contextSize} \n Translator GPU Layers=${translatorParams.gpuLayers} Context=${translatorParams.contextSize}`,
+      //   'LumenCore',
+      // );
 
       this.dbEngine = new DatabaseEngine();
       await this.dbEngine.initialize();
@@ -97,7 +98,6 @@ class LumenCore {
       this.routerEngine = new ChatLlamaCpp({
         modelPath: LLMPath.getRouterLLM(),
         temperature: 0,
-        contextSize: 512,
         gpuLayers: -1,
         useMmap: true,
       });
@@ -107,7 +107,6 @@ class LumenCore {
         this.translatorEngine = new ChatLlamaCpp({
           modelPath: LLMPath.getTranslatorLLM(),
           temperature: 0.2,
-          contextSize: 1024,
           gpuLayers: -1,
           useMmap: true,
         });

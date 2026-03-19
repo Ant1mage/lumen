@@ -70,7 +70,7 @@ app.whenReady().then(async () => {
   LumenCoreService.getInstance().setLumenCore(lumenCore);
 
   // 启动初始化（异步，不阻塞）
-  lumenCore.initEngine().catch(err => {
+  lumenCore.initEngine().catch((err) => {
     logger.error(`LumenCore 初始化失败：${err}`, 'MAIN');
   });
 
