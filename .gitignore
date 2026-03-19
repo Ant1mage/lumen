@@ -40,9 +40,10 @@ Thumbs.db
 .env.production.local
 
 # 模型文件（大文件不提交）
-models/*.gguf
-models/*.bin
-models/*.safetensors
+gguf/*.gguf
+gguf/*.bin
+gguf/*.safetensors
+*.gguf
 
 # 数据库
 *.db

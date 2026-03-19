@@ -13,7 +13,7 @@ export class LLMPath {
       return path.join(process.resourcesPath, "gguf");
     } else {
       // 开发阶段：模型位于 项目根目录/gguf 目录下
-      return path.join(process.cwd(), "gguf");
+      return path.join(process.cwd(), 'gguf');
     }
   }
 
@@ -41,6 +41,13 @@ export class LLMPath {
    */
   public static getVecLLM(): string {
     return this.getPath("bge-m3-q8_0.gguf");
+  }
+
+  /**
+   * 预设：获取默认的 Router 模型路径
+   */
+  public static getRouterLLM(): string {
+    return this.getPath("qwen2.5-0.5b-instruct-q8_0.gguf");
   }
 
   /**

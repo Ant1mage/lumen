@@ -17,8 +17,6 @@ class DatabaseEngine {
 
     // 创建表
     this.createTables();
-
-    logger.info(`数据库初始化完成：${dbPath}`);
   }
 
   private createTables(): void {

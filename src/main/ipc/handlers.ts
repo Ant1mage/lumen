@@ -77,6 +77,11 @@ export function registerIpcHandlers() {
 
   // ==================== 3. LumenCore 状态监听 ====================
 
+  // 获取 LumenCore 当前状态
+  ipcMain.handle(LUMEN_CORE_CHANNELS.GET_STATE, async () => {
+    return lumenCoreService.getCurrentState();
+  });
+
   // 监听 LumenCore 状态变化并转发给渲染进程
   const lumenCoreService = LumenCoreService.getInstance();
   lumenCoreService.onStateChange((state) => {

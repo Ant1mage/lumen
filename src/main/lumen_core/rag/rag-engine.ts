@@ -64,6 +64,7 @@ class RagEngine {
 
     logger.info(
       `RagEngine: 已加载 ${this._documents.size} 条本地索引（限制: ${this._options.maxDocs}）`,
+      'RagEngine',
     );
   }
 

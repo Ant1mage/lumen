@@ -76,4 +76,11 @@ export class LumenCoreService {
       this.stateListeners.delete(listener);
     };
   }
+
+  /**
+   * 获取当前状态
+   */
+  getCurrentState(): LumenCoreState | null {
+    return this.lumenCore?.getState() || null;
+  }
 }

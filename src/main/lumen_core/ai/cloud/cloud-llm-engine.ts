@@ -22,6 +22,7 @@ export class CloudLLMEngine {
     this.model = model;
     logger.info(
       `初始化 CloudLLMEngine: active=${this.provider}, model=${this.model}`,
+      'CloudLLMEngine',
     );
 
     this.llm = new ChatOpenAI({

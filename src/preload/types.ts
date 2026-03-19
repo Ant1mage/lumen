@@ -15,6 +15,7 @@ import type { LumenCoreState } from '@shared/types';
 export type { LLMMessage, LLMRole } from '@shared/types';
 
 export interface LumenCoreAPI {
+  getState: () => Promise<LumenCoreState | null>;
   onStateChange: (listener: (state: LumenCoreState) => void) => () => void;
   sendMessage: (content: string) => Promise<{ success: boolean; error?: string }>;
   onToken: (listener: (token: string) => void) => () => void;

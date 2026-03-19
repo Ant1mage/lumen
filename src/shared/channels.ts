@@ -25,6 +25,7 @@ export const STORE_CONFIG_CHANNELS = {
 
 // ==================== 3. LumenCore 状态监听模块 ====================
 export const LUMEN_CORE_CHANNELS = {
+  GET_STATE: "lumen-core-get-state",
   STATE_CHANGE: "lumen-core-state-change",
   REINITIALIZE: "lumen-core-reinitialize",
   SEND_MESSAGE: "lumen-core-send-message",
