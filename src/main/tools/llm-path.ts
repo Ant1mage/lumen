@@ -1,6 +1,6 @@
-import fs from "fs";
-import path from "path";
-import { app } from "electron";
+import fs from 'fs';
+import path from 'path';
+import { app } from 'electron';
 
 export class LLMPath {
   /**
@@ -10,10 +10,10 @@ export class LLMPath {
     // 优先判断是否是打包环境
     if (app.isPackaged) {
       // 打包后：模型位于 Resources/gguf 目录下
-      return path.join(process.resourcesPath, "gguf");
+      return path.join(process.resourcesPath, 'gguf');
     } else {
       // 开发阶段：模型位于 项目根目录/gguf 目录下
-      return path.join(app.getPath("desktop"), "gguf");
+      return path.join(app.getPath('desktop'), 'gguf');
     }
   }
 
@@ -33,21 +33,21 @@ export class LLMPath {
    * 预设：获取默认的 LLM 模型路径
    */
   public static getTranslatorLLM(): string {
-    return this.getPath("Qwen3.5-4B-Q4_K_M.gguf");
+    return this.getPath('Qwen3.5-4B-Q4_K_M.gguf');
   }
 
   /**
    * 预设：获取默认的 Embedding 模型路径
    */
   public static getVecLLM(): string {
-    return this.getPath("bge-m3-q8_0.gguf");
+    return this.getPath('bge-m3-q8_0.gguf');
   }
 
   /**
    * 预设：获取默认的 Router 模型路径
    */
   public static getRouterLLM(): string {
-    return this.getPath("qwen2.5-0.5b-instruct-q8_0.gguf");
+    return this.getPath('qwen2.5-0.5b-instruct-q8_0.gguf');
   }
 
   /**
@@ -57,7 +57,7 @@ export class LLMPath {
     const root = this.getRootPath();
     try {
       const files = fs.readdirSync(root);
-      return files.filter((file) => file.toLowerCase().endsWith(".gguf"));
+      return files.filter((file) => file.toLowerCase().endsWith('.gguf'));
     } catch {
       return [];
     }

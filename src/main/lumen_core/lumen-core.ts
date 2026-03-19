@@ -1,7 +1,6 @@
 import { LLMRole, LLMMessage, LumenCoreStatus, LumenCoreState } from '@shared/types';
 import LLMPrompt from '../tools/llm-prompt';
 import { logger } from '@main/tools/logger';
-import { systemMonitor } from '@main/tools/system-monitor';
 import CloudLLMEngine from './ai/cloud/cloud-llm-engine';
 import { CloudLLMModel, CloudLLMProvider } from './ai/cloud/cloud-llm-config';
 import LLMPath from '../tools/llm-path';
@@ -72,22 +71,13 @@ class LumenCore {
       logger.pruneOldLogs(7);
       logger.info('Lumen Engine: 正在初始化核心组件...', 'LumenCore');
 
-      const systemInfo = await systemMonitor.getSystemInfo();
-      const translatorParams = await systemMonitor.getRecommendedTranslatorParams();
-      const embeddingParams = await systemMonitor.getRecommendedEmbeddingParams();
-
-      // logger.info(
-      //   `根据机型 (${systemInfo.machineType})自动配置参数\n Embedding GPU Layers=${embeddingParams.gpuLayers}, Context=${embeddingParams.contextSize} \n Translator GPU Layers=${translatorParams.gpuLayers} Context=${translatorParams.contextSize}`,
-      //   'LumenCore',
-      // );
-
       this.dbEngine = new DatabaseEngine();
       await this.dbEngine.initialize();
       logger.info('DB Engine 初始化完成', 'LumenCore');
       await this.loadChatHistory();
 
       const { LlamaCppEmbeddings } = await import('@langchain/community/embeddings/llama_cpp');
-      this.vectorEngine = new LlamaCppEmbeddings({
+      this.vectorEngine = await LlamaCppEmbeddings.initialize({
         modelPath: LLMPath.getVecLLM(),
         gpuLayers: -1,
         useMmap: true,
@@ -95,7 +85,7 @@ class LumenCore {
       logger.info('Vector Engine 初始化完成', 'LumenCore');
 
       const { ChatLlamaCpp } = await import('@langchain/community/chat_models/llama_cpp');
-      this.routerEngine = new ChatLlamaCpp({
+      this.routerEngine = await ChatLlamaCpp.initialize({
         modelPath: LLMPath.getRouterLLM(),
         temperature: 0,
         gpuLayers: -1,
@@ -104,7 +94,7 @@ class LumenCore {
       logger.info('Router Engine 初始化完成', 'LumenCore');
 
       if (this.isTranslatorEnable) {
-        this.translatorEngine = new ChatLlamaCpp({
+        this.translatorEngine = await ChatLlamaCpp.initialize({
           modelPath: LLMPath.getTranslatorLLM(),
           temperature: 0.2,
           gpuLayers: -1,
@@ -132,17 +122,31 @@ class LumenCore {
   }
 
   private async router(userInput: string): Promise<RouterDecision> {
-    if (!this.routerEngine) {
-      throw new Error('Router Engine 未初始化');
-    }
-
     const messages = [
-      { role: 'system', content: LLMPrompt.router },
-      { role: 'user', content: userInput },
+      { role: LLMRole.System, content: LLMPrompt.router },
+      { role: LLMRole.User, content: userInput },
     ];
 
-    const response = await this.routerEngine.invoke(messages);
-    const content = response.content.toString();
+    let content: string;
+
+    try {
+      if (!this.routerEngine) {
+        throw new Error('Router Engine 未初始化');
+      }
+      const response = await this.routerEngine.invoke(messages);
+      content = response.content.toString();
+    } catch (localError) {
+      logger.warn(`本地 Router 失败，使用云端 LLM: ${localError}`, 'LumenCore');
+      if (!this.cloudEngine) {
+        logger.error('Cloud Engine 也未初始化，使用默认决策');
+        content = '{"needPrivateData":false,"needTranslator":false,"isSimpleQuery":true,"reason":"云端 LLM 未初始化"}';
+      } else {
+        content = await this.cloudEngine.chat([
+          { role: LLMRole.System, content: LLMPrompt.router },
+          { role: LLMRole.User, content: userInput },
+        ]);
+      }
+    }
 
     try {
       const cleanContent = content
