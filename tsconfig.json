@@ -33,9 +33,7 @@
     /* 严谨的类型检查 (修复之前提到的 null 问题) */
     "strict": true,
     "noImplicitAny": true,
-    "strictNullChecks": true,
-    /* 消除已弃用警告 */
-    "ignoreDeprecations": "6.0",
+    "strictNullChecks": true
   },
   "include": [
     "src/**/*"

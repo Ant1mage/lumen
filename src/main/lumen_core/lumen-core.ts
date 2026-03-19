@@ -1,58 +1,55 @@
-import path from "path";
-import LLMEngine from "@main/lumen_core/ai/llm-engine";
-import RagEngine from "@main/lumen_core/rag/rag-engine";
-import LLMPath from "@main/lumen_core/ai/llm-path";
-import DatabaseEngine from "@main/lumen_core/db/database-engine";
-// 引入规范化的日志服务和类型
-import { LLMRole, LLMMessage, LumenCoreStatus, LumenCoreState } from "@shared/types";
+import { ChatLlamaCpp } from "@langchain/community/chat_models/llama_cpp";
+import { LlamaCppEmbeddings } from "@langchain/community/embeddings/llama_cpp";
+import {
+  LLMRole,
+  LLMMessage,
+  LumenCoreStatus,
+  LumenCoreState,
+} from "@shared/types";
+import LumenPrompt from "./lumen-prompt";
 import { logger } from "@main/tools/logger";
 import PromptTool from "@main/lumen_core/tools/prompt-tool";
 import { systemMonitor } from "@main/lumen_core/tools/system-monitor";
+import CloudLLMEngine from "./ai/cloud-llm/cloud-llm-engine";
+import {
+  CloudLLMModel,
+  CloudLLMProvider,
+} from "./ai/cloud-llm/cloud-llm-config";
+import LLMPath from "./ai/llm/llm-path";
+import DatabaseEngine from "./db/database-engine";
+import RagEngine from "./rag/rag-engine";
 
-// 状态和类型已经从 @shared/types 导入
+interface RouterDecision {
+  needPrivateData: boolean;
+  needTranslator: boolean;
+  isSimpleQuery: boolean;
+  reason: string;
+}
+
 class LumenCore {
-  private _database!: DatabaseEngine;
-  private _embedding!: LLMEngine; // 专门负责向量化的 BGE-M3
-  private _llm!: LLMEngine; // 专门负责生成的 Qwen
-  private _rag!: RagEngine;
+  private dbEngine: DatabaseEngine | null = null;
+  private ragEngine: RagEngine | null = null;
+  private vectorEngine: LlamaCppEmbeddings | null = null;
+  private routerEngine: ChatLlamaCpp | null = null;
+  private translatorEngine: ChatLlamaCpp | null = null;
+  private cloudEngine: CloudLLMEngine | null = null;
 
-  // 当前选中的模型配置
-  private _currentLLMModel: string = LLMPath.getDefaultLLM();
-  private _currentEmbeddingModel: string = LLMPath.getDefaultEmbedding();
-  private _currentLLMGpuLayers: number | null = null; // null 表示使用自动推荐
-  private _currentEmbeddingGpuLayers: number | null = null;
-  private _currentContextSize: number | null = null;
+  private isTranslatorEnable: boolean = false;
+  private chatHistory: LLMMessage[] = [];
+  private status: LumenCoreStatus = LumenCoreStatus.Idle;
+  private statusListeners: Set<(state: LumenCoreState) => void> = new Set();
+  private initError?: string;
 
-  // 使用规范化的 LLMMessage 类型管理对话历史
-  private _chatHistory: LLMMessage[] = [];
-
-  // 状态管理
-  private _status: LumenCoreStatus = LumenCoreStatus.Idle;
-  private _statusListeners: Set<(state: LumenCoreState) => void> = new Set();
-  private _initError?: string;
-
-  /**
-   * 最大 Prompt Token 数（基于模型 tokenizer 计算），超过则截断最旧的对话历史和参考资料。
-   * 这个值需要小于模型 contextSize（如 3000），预留一些空间给系统提示。
-   */
-  private static readonly MAX_PROMPT_TOKENS = 3000;
-
-  /**
-   * 获取当前状态
-   */
   getState(): LumenCoreState {
     return {
-      status: this._status,
-      error: this._initError,
+      status: this.status,
+      error: this.initError,
     };
   }
 
-  /**
-   * 订阅状态变化
-   */
   onStateChange(listener: (state: LumenCoreState) => void): () => void {
-    this._statusListeners.add(listener);
-    return () => this._statusListeners.delete(listener);
+    this.statusListeners.add(listener);
+    return () => this.statusListeners.delete(listener);
   }
 
   private setStatus(
@@ -60,10 +57,10 @@ class LumenCore {
     progress?: string,
     error?: string,
   ) {
-    this._status = status;
-    this._initError = error;
+    this.status = status;
+    this.initError = error;
     const state: LumenCoreState = { status, progress, error };
-    this._statusListeners.forEach((listener) => {
+    this.statusListeners.forEach((listener) => {
       try {
         listener(state);
       } catch (e) {
@@ -72,11 +69,8 @@ class LumenCore {
     });
   }
 
-  /**
-   * 初始化 Lumen 核心引擎
-   */
   async initEngine() {
-    if (this._status === LumenCoreStatus.Initializing) {
+    if (this.status === LumenCoreStatus.Initializing) {
       logger.warn("Lumen Engine: 初始化正在进行中，请勿重复调用", "SYSTEM");
       return;
     }
@@ -84,57 +78,52 @@ class LumenCore {
     this.setStatus(LumenCoreStatus.Initializing, "正在启动...");
 
     try {
-      // 启动时自动清理 7 天前的旧日志
       logger.pruneOldLogs(7);
       logger.info("Lumen Engine: 正在初始化核心组件...", "SYSTEM");
 
-      // 0. 检测系统信息并获取推荐参数
       const systemInfo = await systemMonitor.getSystemInfo();
-      const llmParams = await systemMonitor.getRecommendedLLMParams();
       const embeddingParams =
         await systemMonitor.getRecommendedEmbeddingParams();
 
       logger.info(
-        `根据机型 (${systemInfo.machineType}) 自动配置参数：GPU Layers=${llmParams.gpuLayers}, Context=${llmParams.contextSize}`,
+        `根据机型 (${systemInfo.machineType}) 自动配置参数：Embedding GPU Layers=${embeddingParams.gpuLayers}, Context=${embeddingParams.contextSize}`,
         "SYSTEM",
       );
 
-      // 1. 初始化本地数据库
-      this._database = new DatabaseEngine();
-      await this._database.initialize();
-
-      // 加载历史会话记录（持久化到本地数据库）
+      this.dbEngine = new DatabaseEngine();
+      await this.dbEngine.initialize();
       await this.loadChatHistory();
 
-      // 2. 初始化 Embedding 实例
-      this._embedding = new LLMEngine();
-      await this._embedding.initialize({
-        modelPath: LLMPath.getDefaultEmbedding(),
-        gpuLayers: this._currentEmbeddingGpuLayers ?? embeddingParams.gpuLayers,
-        contextSize: embeddingParams.contextSize,
+      this.vectorEngine = new LlamaCppEmbeddings({
+        modelPath: LLMPath.getVecLLM(),
+        gpuLayers: -1,
       });
 
-      // 3. 初始化 LLM 推理实例
-      this._llm = new LLMEngine();
-      await this._llm.initialize({
-        modelPath: this._currentLLMModel,
-        contextSize: this._currentContextSize ?? llmParams.contextSize,
-        gpuLayers: this._currentLLMGpuLayers ?? llmParams.gpuLayers,
-        temperature: llmParams.temperature,
-        topP: llmParams.topP,
+      this.routerEngine = new ChatLlamaCpp({
+        modelPath: LLMPath.getTranslatorLLM(),
+        temperature: 0,
+        contextSize: 512,
+        gpuLayers: -1,
       });
 
-      // 4. 初始化 RAG 引擎（支持可配置的相似度与缓存策略）
-      this._rag = new RagEngine(this._database, this._embedding, {
-        minScore: 0.3,
-        maxDocs: 500,
-        cacheStrategy: "lru",
-        cacheTTL: 1000 * 60 * 60 * 24, // 1 天
+      this.translatorEngine = new ChatLlamaCpp({
+        modelPath: LLMPath.getTranslatorLLM(),
+        temperature: 0.2,
+        contextSize: 1024,
+        gpuLayers: -1,
       });
-      await this._rag.initialize();
+
+      this.cloudEngine = new CloudLLMEngine();
+      await this.cloudEngine.initialize(
+        CloudLLMProvider.Qwen,
+        CloudLLMModel.Qwen3_5Flash,
+      );
+
+      this.ragEngine = new RagEngine();
+      await this.ragEngine.initialize(this.dbEngine, this.vectorEngine);
 
       this.setStatus(LumenCoreStatus.Ready, "系统已就绪");
-      logger.info("Lumen Engine: 系统已就绪", "SYSTEM");
+      logger.info("Lumen Engine: Pipeline 架构初始化完成", "SYSTEM");
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.setStatus(LumenCoreStatus.Error, undefined, errorMsg);
@@ -143,74 +132,59 @@ class LumenCore {
     }
   }
 
-  /**
-   * 内部方法：格式化 Prompt 模板（使用 PromptTool）
-   */
-  private formatLLMMessages(
-    messages: LLMMessage[],
-    contextText: string,
-  ): string {
-    return PromptTool.formatPrompt(messages, contextText);
+  private async router(userInput: string): Promise<RouterDecision> {
+    if (!this.routerEngine) {
+      throw new Error("Router Engine 未初始化");
+    }
+
+    const messages = [
+      { role: "system", content: LumenPrompt.router },
+      { role: "user", content: userInput },
+    ];
+
+    const response = await this.routerEngine.invoke(messages);
+    const content = response.content.toString();
+
+    try {
+      const cleanContent = content
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "")
+        .trim();
+      const parsed = JSON.parse(cleanContent);
+      return {
+        needPrivateData: parsed.needPrivateData === "是",
+        needTranslator: parsed.needTranslator === "是",
+        isSimpleQuery: parsed.isSimpleQuery === "是",
+        reason: parsed.reason || "",
+      };
+    } catch {
+      logger.warn(`Router 解析失败，使用默认决策: ${content}`);
+      return {
+        needPrivateData: false,
+        needTranslator: false,
+        isSimpleQuery: true,
+        reason: "解析失败，默认走简单查询",
+      };
+    }
   }
 
-  private truncatePrompt(
-    messages: LLMMessage[],
-    contextText: string,
-  ): { messages: LLMMessage[]; contextText: string } {
-    if (!this._llm) {
-      // 如果还没初始化 LLM，就退回到不截断的逻辑（应当不会发生）
-      return { messages, contextText };
+  private async translate(userInput: string, context: string): Promise<string> {
+    if (!this.translatorEngine) {
+      throw new Error("Translator Engine 未初始化");
     }
 
-    const maxTokens = LumenCore.MAX_PROMPT_TOKENS;
-    let truncatedMessages = [...messages];
-    let truncatedContext = contextText;
+    const prompt = LumenPrompt.translator
+      .replace("{{userInput}}", userInput)
+      .replace("{{context}}", context);
 
-    const render = () =>
-      this.formatLLMMessages(truncatedMessages, truncatedContext);
-
-    const countPromptTokens = (): number => this._llm.countTokens(render());
-
-    // 提取最后一条消息（当前用户问题），确保不会被截断
-    const currentQuestion =
-      truncatedMessages.length > 0
-        ? truncatedMessages[truncatedMessages.length - 1]
-        : null;
-    if (currentQuestion) {
-      truncatedMessages = truncatedMessages.slice(0, -1);
-    }
-
-    // 1. 优先截断历史对话（从最旧条目开始）
-    while (countPromptTokens() > maxTokens && truncatedMessages.length > 0) {
-      truncatedMessages.shift();
-    }
-
-    // 2. 如果仍然超过，则从参考资料前端截断，保留末尾更靠近答案的内容
-    while (countPromptTokens() > maxTokens && truncatedContext.length > 0) {
-      const tokens = this._llm.tokenize(truncatedContext);
-      const removeCount = Math.max(1, Math.ceil(tokens.length * 0.1));
-      truncatedContext = this._llm.detokenize(tokens.slice(removeCount));
-
-      // 3. 若仍然超过，则直接截断为最后 maxTokens 个 token
-      if (countPromptTokens() > maxTokens) {
-        const finalTokens = this._llm.tokenize(render()).slice(-maxTokens);
-        return { messages: [], contextText: this._llm.detokenize(finalTokens) };
-      }
-    }
-
-    // 重新添加当前用户问题到末尾
-    if (currentQuestion) {
-      truncatedMessages.push(currentQuestion);
-    }
-
-    return { messages: truncatedMessages, contextText: truncatedContext };
+    const response = await this.translatorEngine.invoke([
+      { role: "user", content: prompt },
+    ]);
+    return response.content.toString();
   }
 
-  /**
-   * 核心对话方法 (Lumen Chat)
-   */
   async chat(question: string, onToken: (token: string) => void) {
-    if (!this._rag || !this._llm) {
+    if (!this.ragEngine || !this.cloudEngine) {
       throw new Error("Lumen Engine 尚未初始化完成");
     }
 
@@ -218,41 +192,54 @@ class LumenCore {
     logger.chat(LLMRole.User, question);
 
     try {
-      // 1. 检索 (Retrieval)
-      const searchStart = Date.now();
-      const contexts = await this._rag.search(question, 3);
-      logger.perf("RAG Search", Date.now() - searchStart);
+      const routerDecision = await this.router(question);
+      logger.info(
+        `Router 决策: needPrivateData=${routerDecision.needPrivateData}, needTranslator=${routerDecision.needTranslator}, isSimpleQuery=${routerDecision.isSimpleQuery}`,
+        "ROUTER",
+      );
 
-      // 2. 构造消息队列（包含历史对话 + 当前用户问题）
+      let finalPrompt: string;
+      let contexts: string[] = [];
+
+      if (routerDecision.isSimpleQuery) {
+        const systemPrompt = PromptTool.buildSystemPrompt(false);
+        finalPrompt = `${systemPrompt}\n\n用户问题: ${question}`;
+      } else {
+        contexts = await this.ragEngine.search(question, 3);
+        const contextText = contexts.length > 0 ? contexts.join("\n\n") : "";
+
+        if (routerDecision.needTranslator && this.isTranslatorEnable) {
+          finalPrompt = await this.translate(question, contextText);
+        } else {
+          const systemPrompt = PromptTool.buildSystemPrompt(true);
+          finalPrompt = contextText
+            ? `${systemPrompt}\n\n参考资料:\n${contextText}\n\n用户问题: ${question}`
+            : `${systemPrompt}\n\n用户问题: ${question}`;
+        }
+      }
+
       const messages: LLMMessage[] = [
-        ...this._chatHistory,
-        { role: LLMRole.User, content: question },
+        ...this.chatHistory,
+        { role: LLMRole.User, content: finalPrompt },
       ];
 
-      // 3. 组装最终 Prompt，并确保不会超过最大长度导致模型 OOM
-      const contextText = contexts.length > 0 ? contexts.join("\n\n") : "";
-      const { messages: safeMessages, contextText: safeContext } =
-        this.truncatePrompt(messages, contextText);
-      const finalPrompt = this.formatLLMMessages(safeMessages, safeContext);
-
-      // 4. 生成响应 (Generation)
       let fullResponse = "";
-      await this._llm.streamChat(finalPrompt, (token) => {
+
+      await this.cloudEngine.streamChat(messages, (token: string) => {
         fullResponse += token;
         onToken(token);
       });
 
-      // 5. 响应成功后，持久化用户输入和 AI 回复
-      // 注意：messages 已经包含了当前问题，这里只需持久化 AI 回复
       logger.chat(LLMRole.Assistant, fullResponse);
       await this.persistChatMessage(LLMRole.Assistant, fullResponse);
       logger.perf("Total Response Time", Date.now() - startTime);
 
-      // 6. 更新上下文 (保持最近 5 轮，即 10 条记录)
-      // 先添加用户消息（它已经在 messages 中，但未添加到 chatHistory）
-      this._chatHistory.push({ role: LLMRole.User, content: question });
-      this._chatHistory.push({ role: LLMRole.Assistant, content: fullResponse });
-      if (this._chatHistory.length > 10) this._chatHistory.splice(0, 2);
+      this.chatHistory.push({ role: LLMRole.User, content: question });
+      this.chatHistory.push({
+        role: LLMRole.Assistant,
+        content: fullResponse,
+      });
+      if (this.chatHistory.length > 10) this.chatHistory.splice(0, 2);
 
       return fullResponse;
     } catch (error) {
@@ -263,110 +250,22 @@ class LumenCore {
     }
   }
 
-  /**
-   * 知识库维护：添加新文档
-   */
   async addDocument(content: string, metadata?: Record<string, any>) {
-    if (!this._rag) throw new Error("RAG 引擎未就绪");
+    if (!this.ragEngine) throw new Error("RAG 引擎未就绪");
     logger.info(`正在添加新文档: ${content.substring(0, 20)}...`, "RAG");
-    return await this._rag.addDocument(content, metadata);
+    return await this.ragEngine.addDocument(content, metadata);
   }
 
-  /**
-   * 列出本地模型文件（可用的 gguf 模型）
-   */
-  async getAvailableModels() {
-    return LLMPath.listModels();
-  }
-
-  /**
-   * 获取当前选中的模型配置
-   */
-  getCurrentModelSelection() {
-    return {
-      llm: path.basename(this._currentLLMModel),
-      embedding: path.basename(this._currentEmbeddingModel),
-      llmGpuLayers: this._currentLLMGpuLayers ?? -1, // -1 表示自动
-      embeddingGpuLayers: this._currentEmbeddingGpuLayers ?? -1,
-      contextSize: this._currentContextSize ?? -1,
-    };
-  }
-
-  async switchModels(options: {
-    llmModelFile?: string;
-    embeddingModelFile?: string;
-    llmGpuLayers?: number | null;
-    embeddingGpuLayers?: number | null;
-    contextSize?: number | null;
-  }) {
-    // 保存当前设置
-    if (options.llmModelFile) {
-      this._currentLLMModel = LLMPath.getPath(options.llmModelFile);
-    }
-    if (options.embeddingModelFile) {
-      this._currentEmbeddingModel = LLMPath.getPath(options.embeddingModelFile);
-    }
-    if (options.llmGpuLayers !== undefined) {
-      this._currentLLMGpuLayers = options.llmGpuLayers;
-    }
-    if (options.embeddingGpuLayers !== undefined) {
-      this._currentEmbeddingGpuLayers = options.embeddingGpuLayers;
-    }
-    if (options.contextSize !== undefined) {
-      this._currentContextSize = options.contextSize;
-    }
-
-    // 重新初始化模型（保持数据库与 RAG 引擎）
-    logger.info("正在切换模型并重新加载引擎...", "CORE");
-
-    await this._llm?.dispose();
-    await this._embedding?.dispose();
-
-    // 如果用户没有指定参数，则使用系统推荐值
-    const llmParams = await systemMonitor.getRecommendedLLMParams();
-    const embeddingParams = await systemMonitor.getRecommendedEmbeddingParams();
-
-    this._embedding = new LLMEngine();
-    await this._embedding.initialize({
-      modelPath: this._currentEmbeddingModel,
-      gpuLayers: this._currentEmbeddingGpuLayers ?? embeddingParams.gpuLayers,
-      contextSize: embeddingParams.contextSize,
-    });
-
-    this._llm = new LLMEngine();
-    await this._llm.initialize({
-      modelPath: this._currentLLMModel,
-      gpuLayers: this._currentLLMGpuLayers ?? llmParams.gpuLayers,
-      contextSize: this._currentContextSize ?? llmParams.contextSize,
-      temperature: llmParams.temperature,
-      topP: llmParams.topP,
-    });
-
-    // 重新构建 RAG 引擎，确保 embedding 实例已更新
-    this._rag = new RagEngine(this._database, this._embedding, {
-      minScore: 0.3,
-      maxDocs: 500,
-      cacheStrategy: "lru",
-      cacheTTL: 1000 * 60 * 60 * 24,
-    });
-    await this._rag.initialize();
-
-    logger.info("模型切换完成", "CORE");
-  }
-
-  /**
-   * 从数据库加载最近的会话历史（持久化）
-   */
   async loadChatHistory(limit: number = 100) {
-    if (!this._database) return;
+    if (!this.dbEngine) return;
     try {
-      const records = this._database.getChatHistory(limit);
-      this._chatHistory = records.map((r) => ({
+      const records = this.dbEngine.getChatHistory(limit);
+      this.chatHistory = records.map((r) => ({
         role: r.role as LLMRole,
         content: r.content,
       }));
       logger.info(
-        `会话历史已恢复（最近 ${this._chatHistory.length} 条）`,
+        `会话历史已恢复（最近 ${this.chatHistory.length} 条）`,
         "CORE",
       );
     } catch (error) {
@@ -375,21 +274,21 @@ class LumenCore {
   }
 
   async getChatHistory(limit: number = 100) {
-    if (!this._database) return this._chatHistory;
+    if (!this.dbEngine) return this.chatHistory;
     try {
-      return this._database.getChatHistory(limit);
+      return this.dbEngine.getChatHistory(limit);
     } catch (error) {
       logger.error("读取会话历史失败", error);
-      return this._chatHistory;
+      return this.chatHistory;
     }
   }
 
   async clearHistory() {
-    this._chatHistory = [];
-    if (!this._database) return;
+    this.chatHistory = [];
+    if (!this.dbEngine) return;
 
     try {
-      this._database.clearChatHistory();
+      this.dbEngine.clearChatHistory();
       logger.info("会话历史已清空（含持久化数据）", "CORE");
     } catch (error) {
       logger.error("清空会话历史失败", error);
@@ -397,32 +296,38 @@ class LumenCore {
   }
 
   private async persistChatMessage(role: LLMRole, content: string) {
-    if (!this._database) return;
+    if (!this.dbEngine) return;
     try {
-      this._database.insertChatMessage(role, content);
+      this.dbEngine.insertChatMessage(role, content);
     } catch (error) {
       logger.error("写入会话历史失败", error);
     }
   }
 
-  /**
-   * 重置会话状态
-   */
   clearSession() {
-    this._chatHistory = [];
+    this.chatHistory = [];
     logger.info("会话历史已清空", "CORE");
   }
 
-  /**
-   * 彻底释放资源
-   */
+  setTranslatorEnable(enable: boolean) {
+    this.isTranslatorEnable = enable;
+    logger.info(`Translator Engine: ${enable ? "启用" : "禁用"}`, "CONFIG");
+  }
+
+  isTranslatorEnabled(): boolean {
+    return this.isTranslatorEnable;
+  }
+
   async dispose() {
     this.setStatus(LumenCoreStatus.Disposing, "正在释放资源...");
     try {
-      await this._llm?.dispose();
-      await this._embedding?.dispose();
-      this._chatHistory = [];
-      await this._database?.close();
+      this.vectorEngine = null;
+      this.routerEngine = null;
+      this.translatorEngine = null;
+      this.cloudEngine = null;
+      this.ragEngine = null;
+      this.chatHistory = [];
+      await this.dbEngine?.close();
       this.setStatus(LumenCoreStatus.Idle);
       logger.info("Lumen Engine: 资源已释放", "SYSTEM");
     } catch (error) {

@@ -9,11 +9,11 @@ export class LLMPath {
   private static getRootPath(): string {
     // 优先判断是否是打包环境
     if (app.isPackaged) {
-      // 打包后：模型位于 Resources/models 目录下
-      return path.join(process.resourcesPath, "models");
+      // 打包后：模型位于 Resources/gguf 目录下
+      return path.join(process.resourcesPath, "gguf");
     } else {
-      // 开发阶段：模型位于 项目根目录/models 目录下
-      return path.join(process.cwd(), "models");
+      // 开发阶段：模型位于 项目根目录/gguf 目录下
+      return path.join(process.cwd(), "gguf");
     }
   }
 
@@ -32,14 +32,14 @@ export class LLMPath {
   /**
    * 预设：获取默认的 LLM 模型路径
    */
-  public static getDefaultLLM(): string {
+  public static getTranslatorLLM(): string {
     return this.getPath("Qwen3.5-4B-Q4_K_M.gguf");
   }
 
   /**
    * 预设：获取默认的 Embedding 模型路径
    */
-  public static getDefaultEmbedding(): string {
+  public static getVecLLM(): string {
     return this.getPath("bge-m3-q8_0.gguf");
   }
 

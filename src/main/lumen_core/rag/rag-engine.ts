@@ -1,6 +1,6 @@
-import LLMEngine from "@main/lumen_core/ai/llm-engine";
 import DatabaseEngine from "@main/lumen_core/db/database-engine";
 import { logger } from "@main/tools/logger";
+import { Embeddings } from "@langchain/core/embeddings";
 
 export interface RAGDocument {
   id?: number;
@@ -10,44 +10,39 @@ export interface RAGDocument {
 }
 
 export interface RagEngineOptions {
-  /** Minimum similarity score to include in results (0-1) */
-  minScore?: number;
-  /** Maximum number of documents to keep in memory cache */
-  maxDocs?: number;
-  /** Cache eviction strategy when maxDocs is reached */
-  cacheStrategy?: "none" | "fifo" | "lru";
-  /** Time-to-live (ms) for cached documents (only used when set) */
-  cacheTTL?: number;
+  minScore: number;
+  maxDocs: number;
+  cacheStrategy: "none" | "fifo" | "lru";
+  cacheTTL: number;
 }
 
 class RagEngine {
+  private _db: DatabaseEngine | null = null;
+  private _embeddingEngine: Embeddings | null = null;
+  private _options: RagEngineOptions = {
+    minScore: 0.3,
+    maxDocs: 1000,
+    cacheStrategy: "lru",
+    cacheTTL: 1000 * 60 * 60 * 24,
+  };
+
   private _documents: Map<number, RAGDocument> = new Map();
   private _cacheOrder: number[] = [];
   private _cacheTimestamps: Map<number, number> = new Map();
 
-  private _minSimilarity: number;
-  private _maxDocs: number;
-  private _cacheStrategy: "none" | "fifo" | "lru";
-  private cacheTTL?: number;
-
-  constructor(
-    private _db: DatabaseEngine,
-    private _embeddingEngine: LLMEngine,
-    options: RagEngineOptions = {},
-  ) {
-    this._minSimilarity = options.minScore ?? 0.3;
-    this._maxDocs = options.maxDocs ?? 1000;
-    this._cacheStrategy = options.cacheStrategy ?? "fifo";
-    this.cacheTTL = options.cacheTTL;
-  }
-
-  async initialize(): Promise<void> {
-    // 只加载最新的 maxDocs 条记录，防止内存过大
-    // 按 ID 降序获取，确保最新的文档优先加载
-    const docs = this._db.getAllDocuments(this._maxDocs);
+  async initialize(
+    db: DatabaseEngine,
+    embeddingEngine: Embeddings,
+    options: RagEngineOptions | null = null,
+  ): Promise<void> {
+    this._db = db;
+    this._embeddingEngine = embeddingEngine;
+    if (options) {
+      this._options = options;
+    }
+    const docs = db.getAllDocuments(this._options.maxDocs);
     const now = Date.now();
 
-    // 清空现有缓存，确保与数据库同步
     this._documents.clear();
     this._cacheOrder = [];
     this._cacheTimestamps.clear();
@@ -60,7 +55,6 @@ class RagEngine {
         embedding: doc.embedding ? JSON.parse(doc.embedding) : [],
         metadata: doc.metadata ? JSON.parse(doc.metadata) : undefined,
       });
-      // 保持 ID 升序，确保 LRU/FIFO 正确性
       this._cacheOrder.push(doc.id);
       this._cacheTimestamps.set(doc.id, now);
     }
@@ -69,22 +63,12 @@ class RagEngine {
     this.evictIfNeeded();
 
     logger.info(
-      `RagEngine: 已加载 ${this._documents.size} 条本地索引（限制: ${this._maxDocs}）`,
+      `RagEngine: 已加载 ${this._documents.size} 条本地索引（限制: ${this._options.maxDocs}）`,
     );
   }
 
-  /**
-   * 重新加载缓存（用于模型切换后同步）
-   */
-  async reload(): Promise<void> {
-    logger.info("RagEngine: 重新加载缓存...");
-    await this.initialize();
-  }
-
   private evictExpired() {
-    if (!this.cacheTTL) return;
-
-    const cutoff = Date.now() - this.cacheTTL;
+    const cutoff = Date.now() - this._options.cacheTTL;
     for (const [id, ts] of this._cacheTimestamps.entries()) {
       if (ts < cutoff) {
         this._documents.delete(id);
@@ -96,31 +80,31 @@ class RagEngine {
 
   private recordAccess(id: number) {
     this._cacheTimestamps.set(id, Date.now());
-
-    if (this._cacheStrategy !== "lru") return;
-    // Move to back of queue for LRU
     this._cacheOrder = this._cacheOrder.filter((x) => x !== id);
     this._cacheOrder.push(id);
   }
 
   private evictIfNeeded() {
-    if (this._cacheStrategy === "none") return;
+    if (this._options.cacheStrategy === "none") return;
 
-    while (this._documents.size > this._maxDocs) {
-      // FIFO / LRU: evict the oldest tracked item
-      const evictId = this._cacheOrder.shift();
-      if (!evictId) break;
+    while (this._documents.size > this._options.maxDocs) {
+      let evictId: number | undefined;
+
+      if (this._options.cacheStrategy === "fifo") {
+        evictId = this._cacheOrder.shift();
+      } else if (this._options.cacheStrategy === "lru") {
+        evictId = this._cacheOrder.shift();
+      }
+
+      if (evictId === undefined) break;
       this._documents.delete(evictId);
       this._cacheTimestamps.delete(evictId);
     }
   }
 
-  // 只负责存：生成向量并存库
-  async addDocument(
-    content: string,
-    metadata?: Record<string, any>,
-  ): Promise<RAGDocument> {
-    const embedding = await this._embeddingEngine.embed(content);
+  async addDocument(content: string, metadata?: Record<string, any>) {
+    if (!this._embeddingEngine || !this._db) return null;
+    const embedding = await this._embeddingEngine.embedQuery(content);
     const id = this._db.insertDocument({
       content,
       embedding: JSON.stringify(embedding),
@@ -129,11 +113,18 @@ class RagEngine {
     });
 
     const newDoc: RAGDocument = { id, content, embedding, metadata };
-
-    // 检查是否需要先清理空间（在添加新文档前）
-    if (this._documents.size >= this._maxDocs) {
-      this.evictExpired();
-      this.evictIfNeeded();
+    if (this._documents.size >= this._options.maxDocs) {
+      let evictId: number | undefined;
+      if (
+        this._options.cacheStrategy === "fifo" ||
+        this._options.cacheStrategy === "lru"
+      ) {
+        evictId = this._cacheOrder.shift();
+      }
+      if (evictId !== undefined) {
+        this._documents.delete(evictId);
+        this._cacheTimestamps.delete(evictId);
+      }
     }
 
     this._documents.set(id, newDoc);
@@ -143,43 +134,47 @@ class RagEngine {
     return newDoc;
   }
 
-  /**
-   * 获取缓存统计信息
-   */
   getCacheStats(): { size: number; maxSize: number; strategy: string } {
     return {
       size: this._documents.size,
-      maxSize: this._maxDocs,
-      strategy: this._cacheStrategy,
+      maxSize: this._options.maxDocs,
+      strategy: this._options.cacheStrategy,
     };
   }
 
-  // 只负责查：输入问题，返回相似文档片段
   async search(query: string, limit: number = 5) {
-    this.evictExpired();
+    try {
+      if (!this._embeddingEngine) {
+        logger.error("Embedding engine not initialized", "RagEngine");
+        throw new Error("Embedding engine not initialized");
+      }
+      this.evictExpired();
 
-    const queryEmbedding = await this._embeddingEngine.embed(query);
-    const effectiveLimit = Math.min(limit, this._maxDocs);
+      const queryEmbedding = await this._embeddingEngine.embedQuery(query);
+      const effectiveLimit = Math.min(limit, this._options.maxDocs);
 
-    const results = Array.from(this._documents.values())
-      .map((doc) => {
-        if (!doc.embedding || doc.embedding.length === 0) return null;
-        if (doc.embedding.length !== queryEmbedding.length) return null;
+      const results = Array.from(this._documents.values())
+        .map((doc) => {
+          if (!doc.embedding || doc.embedding.length === 0) return null;
+          if (doc.embedding.length !== queryEmbedding.length) return null;
 
-        const score = this.cosineSimilarity(queryEmbedding, doc.embedding);
-        return { doc, score };
-      })
-      .filter((res): res is { doc: RAGDocument; score: number } => !!res)
-      .filter((res) => res.score >= this._minSimilarity)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, effectiveLimit);
+          const score = this.cosineSimilarity(queryEmbedding, doc.embedding);
+          return { doc, score };
+        })
+        .filter((res): res is { doc: RAGDocument; score: number } => !!res)
+        .filter((res) => res.score >= this._options.minScore)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, effectiveLimit);
 
-    // 更新访问时间/顺序（LRU）
-    for (const { doc } of results) {
-      if (doc.id) this.recordAccess(doc.id);
+      for (const { doc } of results) {
+        if (doc.id) this.recordAccess(doc.id);
+      }
+
+      return results.map((r) => r.doc.content);
+    } catch (error) {
+      logger.error(`RagEngine: 搜索失败：${error}`, "RagEngine");
+      return [];
     }
-
-    return results.map((r) => r.doc.content);
   }
 
   private cosineSimilarity(a: number[], b: number[]): number {

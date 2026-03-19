@@ -1,8 +1,8 @@
-import LumenCore from '@main/lumen_core/lumen-core';
-import { BrowserWindow, ipcMain } from 'electron';
-import { LUMEN_CORE_CHANNELS } from '@shared/channels';
-import { LumenCoreState } from '@shared/types';
-import { logger } from '@main/tools/logger';
+import LumenCore from "@main/lumen_core/lumen-core";
+import { BrowserWindow, ipcMain } from "electron";
+import { LUMEN_CORE_CHANNELS } from "@shared/channels";
+import { LumenCoreState } from "@shared/types";
+import { logger } from "@main/tools/logger";
 
 /**
  * LumenCore 状态管理服务
@@ -10,10 +10,10 @@ import { logger } from '@main/tools/logger';
  */
 export class LumenCoreService {
   private static instance: LumenCoreService;
-  private _lumenCore: LumenCore | null = null;
-  private _stateListeners: Set<(state: LumenCoreState) => void> = new Set();
+  private lumenCore: LumenCore | null = null;
+  private stateListeners: Set<(state: LumenCoreState) => void> = new Set();
 
-  private constructor() { }
+  private constructor() {}
 
   static getInstance(): LumenCoreService {
     if (!LumenCoreService.instance) {
@@ -26,28 +26,34 @@ export class LumenCoreService {
    * 设置 LumenCore 实例
    */
   setLumenCore(lumenCore: LumenCore) {
-    this._lumenCore = lumenCore;
+    this.lumenCore = lumenCore;
 
     // 订阅状态变化并转发给所有监听器
     if (lumenCore) {
-      lumenCore.onStateChange((state: LumenCoreState) => {
-        logger.info(`收到状态更新：${JSON.stringify(state)}`, 'LumenCoreService')
+      this.lumenCore.onStateChange((state: LumenCoreState) => {
+        logger.info(
+          `收到状态更新：${JSON.stringify(state)}`,
+          "LumenCoreService",
+        );
 
-        this._stateListeners.forEach(listener => {
+        this.stateListeners.forEach((listener) => {
           try {
             listener(state);
           } catch (error) {
-            logger.error(`状态监听器执行失败：${error}`, 'LumenCoreService');
+            logger.error(`状态监听器执行失败：${error}`, "LumenCoreService");
           }
         });
 
         // 发送到渲染进程
         const windows = BrowserWindow.getAllWindows();
         if (windows.length > 0) {
-          logger.info(`发送状态到渲染进程：${JSON.stringify(state)}`, 'LumenCoreService')
+          logger.info(
+            `发送状态到渲染进程：${JSON.stringify(state)}`,
+            "LumenCoreService",
+          );
           windows[0].webContents.send(LUMEN_CORE_CHANNELS.STATE_CHANGE, state);
         } else {
-          logger.warn('没有找到任何窗口', 'LumenCoreService')
+          logger.warn("没有找到任何窗口", "LumenCoreService");
         }
       });
     }
@@ -57,18 +63,17 @@ export class LumenCoreService {
    * 获取 LumenCore 实例
    */
   getLumenCore(): LumenCore | null {
-    return this._lumenCore;
+    return this.lumenCore;
   }
 
   /**
    * 订阅状态变化
    */
   onStateChange(listener: (state: LumenCoreState) => void): () => void {
-    this._stateListeners.add(listener);
+    this.stateListeners.add(listener);
 
-    // 返回取消订阅函数
     return () => {
-      this._stateListeners.delete(listener);
+      this.stateListeners.delete(listener);
     };
   }
 }

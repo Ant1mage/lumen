@@ -1,23 +1,26 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer } from "electron";
 import {
   STORE_CONFIG_CHANNELS,
   VIEW_CHANNELS,
   LUMEN_CORE_CHANNELS,
-  IPC_LOG_ACTION
-} from '@shared/channels';
-import { LogLevel, LogSource } from '@shared/types';
+  IPC_LOG_ACTION,
+} from "@shared/channels";
+import { LogLevel, LogSource } from "@shared/types";
 
 // ==================== 1. 系统与配置模块 ====================
-contextBridge.exposeInMainWorld('store_config', {
+contextBridge.exposeInMainWorld("store_config", {
   getTheme: () => ipcRenderer.invoke(STORE_CONFIG_CHANNELS.THEME.GET),
-  setTheme: (theme: 'system' | 'light' | 'dark') => ipcRenderer.invoke(STORE_CONFIG_CHANNELS.THEME.SET, theme),
+  setTheme: (theme: "system" | "light" | "dark") =>
+    ipcRenderer.invoke(STORE_CONFIG_CHANNELS.THEME.SET, theme),
   getLanguage: () => ipcRenderer.invoke(STORE_CONFIG_CHANNELS.LANGUAGE.GET),
-  setLanguage: (lang: 'zh-CN' | 'en-US') => ipcRenderer.invoke(STORE_CONFIG_CHANNELS.LANGUAGE.SET, lang),
-  getUserSettings: () => ipcRenderer.invoke(STORE_CONFIG_CHANNELS.SETTINGS.GET_USER),
+  setLanguage: (lang: "zh-CN" | "en-US") =>
+    ipcRenderer.invoke(STORE_CONFIG_CHANNELS.LANGUAGE.SET, lang),
+  getUserSettings: () =>
+    ipcRenderer.invoke(STORE_CONFIG_CHANNELS.SETTINGS.GET_USER),
 });
 
 // ==================== 2. LumenCore 状态监听模块 ====================
-contextBridge.exposeInMainWorld('lumen_core', {
+contextBridge.exposeInMainWorld("lumen_core", {
   onStateChange: (listener: (state: any) => void) => {
     const channel = LUMEN_CORE_CHANNELS.STATE_CHANGE;
     const handler = (_event: any, state: any) => listener(state);
@@ -28,13 +31,14 @@ contextBridge.exposeInMainWorld('lumen_core', {
   },
   sendMessage: (content: string) => {
     return new Promise((resolve) => {
-      ipcRenderer.invoke(LUMEN_CORE_CHANNELS.SEND_MESSAGE, content)
+      ipcRenderer
+        .invoke(LUMEN_CORE_CHANNELS.SEND_MESSAGE, content)
         .then((result) => resolve(result))
         .catch((error) => resolve({ success: false, error: String(error) }));
     });
   },
   onToken: (listener: (token: string) => void) => {
-    const channel = 'lumen-core-token';
+    const channel = "lumen-core-token";
     const handler = (_event: any, token: string) => listener(token);
     ipcRenderer.on(channel, handler);
     return () => {
@@ -45,28 +49,29 @@ contextBridge.exposeInMainWorld('lumen_core', {
 });
 
 // ==================== 3. 视图模块 ====================
-contextBridge.exposeInMainWorld('view', {
+contextBridge.exposeInMainWorld("view", {
   getSidebarChoose: () => ipcRenderer.invoke(VIEW_CHANNELS.SIDEBAR.GET_CHOOSE),
-  setSidebarChoose: (key: string) => ipcRenderer.invoke(VIEW_CHANNELS.SIDEBAR.SET_CHOOSE, key),
+  setSidebarChoose: (key: string) =>
+    ipcRenderer.invoke(VIEW_CHANNELS.SIDEBAR.SET_CHOOSE, key),
 });
 
 // ==================== 3. 核心通信模块 ====================
-contextBridge.exposeInMainWorld('core', {
+contextBridge.exposeInMainWorld("core", {
   send: (channel: string, data?: any) => {
-    const validChannels = ['toMain'];
+    const validChannels = ["toMain"];
     if (validChannels.includes(channel)) {
       ipcRenderer.send(channel, data);
     }
   },
   receive: (channel: string, func: (...args: any[]) => void) => {
-    const validChannels = ['fromMain'];
+    const validChannels = ["fromMain"];
     if (validChannels.includes(channel)) {
       ipcRenderer.on(channel, (_event, ...args) => func(...args));
     }
   },
 });
 
-// ==================== 4. 跨进程日志模块 ====================
+// ==================== 5. 跨进程日志模块 ====================
 /**
  * 日志接口定义
  */
@@ -116,7 +121,7 @@ const createLogFunction = (level: LogLevel): Logger[typeof level] => {
         level,
         message,
         source: LogSource.Renderer,
-        context: context || 'RENDERER',
+        context: context || "RENDERER",
         timestamp: new Date().toISOString(),
         data,
       });
@@ -125,7 +130,7 @@ const createLogFunction = (level: LogLevel): Logger[typeof level] => {
 };
 
 // 暴露 logger 对象到渲染进程
-contextBridge.exposeInMainWorld('logger', {
+contextBridge.exposeInMainWorld("logger", {
   info: createLogFunction(LogLevel.Info),
   warn: createLogFunction(LogLevel.Warn),
   error: createLogFunction(LogLevel.Error),
