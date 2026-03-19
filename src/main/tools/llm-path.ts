@@ -13,7 +13,7 @@ export class LLMPath {
       return path.join(process.resourcesPath, "gguf");
     } else {
       // 开发阶段：模型位于 项目根目录/gguf 目录下
-      return path.join(process.cwd(), 'gguf');
+      return path.join(app.getPath("desktop"), "gguf");
     }
   }
 

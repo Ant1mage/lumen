@@ -65,14 +65,28 @@ app.whenReady().then(async () => {
   // 注册所有 IPC 处理程序
   registerIpcHandlers();
 
-  // 初始化 LumenCore（在后台进行，不阻塞 UI）
+  // 初始化 LumenCore（在窗口渲染完成后进行，不阻塞 UI）
   lumenCore = new LumenCore();
   LumenCoreService.getInstance().setLumenCore(lumenCore);
 
-  // 启动初始化（异步，不阻塞）
-  lumenCore.initEngine().catch((err) => {
-    logger.error(`LumenCore 初始化失败：${err}`, 'MAIN');
+  // 等待窗口渲染完成后再启动 LumenCore 初始化
+  const startLumenCore = () => {
+    logger.info('开始初始化 LumenCore', 'MAIN');
+    lumenCore!.initEngine().catch((err) => {
+      logger.error(`LumenCore 初始化失败：${err}`, 'MAIN');
+    });
+  };
+
+  mainWindow!.once('ready-to-show', () => {
+    logger.info('窗口 ready-to-show，开始初始化 LumenCore', 'MAIN');
+    startLumenCore();
   });
+
+  // 备用：如果 ready-to-show 没触发，1秒后也启动
+  setTimeout(() => {
+    logger.info('超时备用：开始初始化 LumenCore', 'MAIN');
+    startLumenCore();
+  }, 1000);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
