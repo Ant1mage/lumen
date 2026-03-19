@@ -1,27 +1,51 @@
-import { LLMMessage, LLMRole } from "@shared/types";
+import { LLMMessage, LLMRole } from '@shared/types';
 
 class LLMPrompt {
-  static router = `你是一个意图识别助手。用户会输入一段话，你需要判断：
+  static router = `判断用户输入的意图，只回答JSON。
 
-1. 是否需要检索私有数据（知识库）？回答：是/否
-2. 是否包含敏感财务信息需要脱敏？回答：是/否
-3. 是否是简单的百科/行情查询（不需要私有数据）？回答：是/否
+规则：
+- needPrivateData: 需要查知识库吗？
+- needTranslator: 包含敏感信息（手机号、身份证、银行卡、地址、人名等）吗？
+- isSimpleQuery: 是简单百科查询吗？
 
-请严格按照以下JSON格式回答，不要添加任何解释：
-{"needPrivateData":"是/否","needTranslator":"是/否","isSimpleQuery":"是/否","reason":"简要原因"}`;
+示例：
+输入："帮我查下张三的考勤记录"
+输出：{"needPrivateData":"是","needTranslator":"是","isSimpleQuery":"否","reason":"需要查员工私有数据"}
 
-  static translator = `你是一个prompt优化助手。请将用户原话与背景信息融合，生成一个脱敏后的高质量prompt。
+输入："我的手机号是13812345678"
+输出：{"needPrivateData":"否","needTranslator":"是","isSimpleQuery":"否","reason":"包含手机号敏感信息"}
 
+输入："今天天气怎么样"
+输出：{"needPrivateData":"否","needTranslator":"否","isSimpleQuery":"是","reason":"简单天气查询"}
+
+输入："什么是机器学习"
+输出：{"needPrivateData":"否","needTranslator":"否","isSimpleQuery":"是","reason":"百科知识"}
+
+现在判断：`;
+
+  static translator = `将用户输入脱敏，保留意图。
+
+规则：
+- 人名 → 某人/某员工
+- 地点 → 某地
+- 时间 → 某时
+- 金额 → 某金额
+- 股票代码 → 某股票
+
+示例：
+输入："帮我查下张三在北京的出差记录"
+输出："帮我查下某员工在某地的出差记录"
+
+输入："李四上个月工资发了多少"
+输出："某员工某月工资发了多少"
+
+输入："茅台600519最近走势如何"
+输出："某股票最近走势如何"
+
+现在脱敏：
 用户原话：{{userInput}}
-
-背景信息：
-{{context}}
-
-要求：
-1. 保留用户核心意图
-2. 将具体人名、地点等敏感信息泛化
-3. 背景信息作为事实补充
-4. 直接输出优化后的prompt，不要解释`;
+背景信息：{{context}}
+输出：`;
 
   /**
    * 格式化对话历史
@@ -40,7 +64,7 @@ class LLMPrompt {
             return msg.content;
         }
       })
-      .join("\n\n");
+      .join('\n\n');
   }
 
   /**
@@ -49,41 +73,23 @@ class LLMPrompt {
    */
   static buildSystemPrompt(hasContext: boolean): string {
     if (hasContext) {
-      return "你是 Lumen，一个聪明、严谨且富有洞察力的 AI 助手。请根据提供的参考资料回答用户的问题。";
+      return '你是一个聪明、严谨且富有洞察力的 AI 助手。请根据提供的参考资料回答用户的问题。';
     } else {
-      return "你是 Lumen，一个聪明、严谨且富有洞察力的 AI 助手。请根据你自己的知识回答用户的问题。";
+      return '你是一个聪明、严谨且富有洞察力的 AI 助手。请根据你自己的知识回答用户的问题。';
     }
   }
 
   /**
-   * 格式化最终 Prompt
-   * @param messages - 对话历史消息列表
+   * 格式化最终 Prompt - 拼接用户问题/脱敏内容和 RAG 上下文
+   * @param userInput - 用户问题或脱敏后的内容
    * @param contextText - RAG 检索到的参考资料
-   * @returns 格式化后的完整 Prompt
+   * @returns 格式化后的 user content 字符串
    */
-  static formatPrompt(messages: LLMMessage[], contextText: string): string {
-    const formattedHistory = this.formatHistory(messages);
-    const hasContext = !!contextText && contextText.trim().length > 0;
-    const hasHistory = formattedHistory.trim().length > 0;
-    const systemPrompt = this.buildSystemPrompt(hasContext);
-
-    // 情况 1: 无参考资料，有历史记录
-    if (!hasContext && hasHistory) {
-      return `${systemPrompt}\n\n${formattedHistory}\n\nAssistant:`;
+  static formatRAGPrompt(userInput: string, ragContext: string): string {
+    if (ragContext && ragContext.trim().length > 0) {
+      return `参考资料:\n${ragContext}\n\n${userInput}`;
     }
-
-    // 情况 2: 无参考资料，无历史记录（全新对话）
-    if (!hasContext && !hasHistory) {
-      return `${systemPrompt}\n\nAssistant:`;
-    }
-
-    // 情况 3: 有参考资料，有历史记录
-    if (hasContext && hasHistory) {
-      return `${systemPrompt}\n\n参考资料:\n${contextText}\n\n${formattedHistory}\n\nAssistant:`;
-    }
-
-    // 情况 4: 有参考资料，无历史记录
-    return `${systemPrompt}\n\n参考资料:\n${contextText}\n\nAssistant:`;
+    return userInput;
   }
 }
 

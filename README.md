@@ -19,7 +19,7 @@
 
 ## 📖 简介
 
-Lumen 是一款专为股票分析设计的桌面 AI 助手。基于**云端推理** + **本地辅助**架构，以**LangChain.js**为核心，意图分发、本地脱敏、RAG 增强，提供精准的股票分析问答服务。
+Lumen 是一款专为股票分析设计的桌面 AI 助手。基于**云端推理** + **本地辅助**架构，以**LangChain.js LCEL**为核心，实现意图分发、本地脱敏、RAG 增强，提供精准的股票分析问答服务。
 
 ### ⚠️ 重要提示
 
@@ -101,14 +101,17 @@ pnpm clean
 └────────────────┬────────────────────────────────────┘
                  │
 ┌─────────────────────────────────────────────────────┐
-│  核心服务层                                          │
+│  LumenCore (基础设施)                               │
+│  ├─ 💾 SQLite 数据库 (better-sqlite3)              │
+│  ├─ 📊 Vector Engine (本地 Embedding 向量化)         │
+│  └─ 🧠 RAG Engine (向量检索增强)                    │
+└────────────────┬────────────────────────────────────┘
+                 │ 懒加载
+┌────────────────▼────────────────────────────────────┐
+│  LumenChain (LangChain LCEL Pipeline)              │
 │  ├─ ☁️ Cloud Engine (云端 LLM 主力推理)              │
 │  ├─ 🔥 Router Engine (本地意图分发)                  │
-│  ├─ 📊 Vector Engine (本地 Embedding 向量化)         │
-│  ├─ 🔒 Desensitization Engine (本地脱敏)            │
-│  ├─ 🧠 RAG Engine (向量检索增强)                    │
-│  ├─ 💾 SQLite 数据库 (better-sqlite3)              │
-│  └─ 📝 日志服务                                     │
+│  └─ 🔒 Translator Engine (本地脱敏)                 │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -116,7 +119,65 @@ pnpm clean
 
 ## 🚀 核心能力
 
-### 1. 端云协同架构
+### 1. LangChain LCEL Pipeline 架构
+
+**基于 RunnableLambda 的链式调用**
+
+```typescript
+// LumenChain 构建流程
+RunnableSequence.from([
+  // 步骤1: 意图识别
+  RunnableLambda.from(async (input) => {
+    const routerDecision = await this.router(input.question);
+    return { ...input, routerDecision };
+  }),
+
+  // 步骤2: RAG 检索
+  RunnableLambda.from(async (state) => {
+    const ragContexts = await this.ragSearch(state.question, 3);
+    return { ...state, ragContexts };
+  }),
+
+  // 步骤3: 脱敏判定
+  RunnableLambda.from(async (state) => {
+    if (state.routerDecision.needTranslator) {
+      state.desensitizedPrompt = await this.translate(state.question);
+    }
+    return state;
+  }),
+
+  // 步骤4: 构建消息
+  RunnableLambda.from((state) => {
+    const messages = buildMessages(state);
+    return { ...state, messages };
+  }),
+
+  // 步骤5: 云端推理
+  RunnableLambda.from(async (state) => {
+    const response = await this.streamChat(state.messages);
+    return { ...state, response };
+  }),
+]);
+```
+
+### 2. 懒加载机制
+
+**按需加载，优化启动性能**
+
+- LumenCore 启动时只加载基础设施（DB + Vector + RAG）
+- Router/Cloud/Translator Engine 在首次使用时才加载
+- 函数式依赖注入，解耦具体实现
+
+```typescript
+// 构造函数只接收函数签名，不依赖具体实现
+constructor(
+  ragSearch: (query: string, topK: number) => Promise<string[]>,
+  isTranslatorEnabled: boolean,
+  onToken: (token: string) => void,
+)
+```
+
+### 3. 端云协同架构
 
 **云端推理为主 · 本地辅助为辅**
 
@@ -126,39 +187,52 @@ pnpm clean
 - 🔥 **本地辅助**：基于 `node-llama-cpp` 的本地小模型
   - Router 模型：`qwen2.5-0.5b`（意图分发）
   - Embedding 模型：`bge-m3`（向量检索）
-  - Desensitization 模型：`Qwen3.5-4B`（本地脱敏）
+  - Translator 模型：`Qwen3.5-4B`（本地脱敏）
 - 🧠 **智能路由**：根据意图自动选择最优处理路径
   - 简单查询 → 云端直接回答
-  - 脱敏需求 → 本地 Desensitization
+  - 脱敏需求 → 本地脱敏 → 云端推理
   - 私有数据 → RAG + 云端 LLM
 
-### 2. 智能对话（RAG）
+### 4. Prompt 工程
 
-**基于 LangChain LCEL 的 Pipeline 架构**
+**Few-shot 示例 + 精简指令**
 
-工作流: 检索 → 增强 → 生成
+```typescript
+// Router Prompt - 意图识别
+static router = `判断用户输入的意图，只回答JSON。
 
-- 语义搜索和向量匹配
-- 动态注入 Top-3 参考资料
-- 保持最近 10 条对话历史
+规则：
+- needPrivateData: 需要查知识库吗？
+- needTranslator: 包含敏感信息（手机号、身份证、银行卡、地址、人名等）吗？
+- isSimpleQuery: 是简单百科查询吗？
 
-### 3. 知识库管理
+示例：
+输入："我的手机号是13812345678"
+输出：{"needPrivateData":"否","needTranslator":"是","isSimpleQuery":"否","reason":"包含手机号敏感信息"}`;
+
+// Translator Prompt - 脱敏
+static translator = `将用户输入脱敏，保留意图。
+
+规则：
+- 人名 → 某人/某员工
+- 地点 → 某地
+- 时间 → 某时
+- 金额 → 某金额
+- 股票代码 → 某股票
+
+示例：
+输入："帮我查下张三在北京的出差记录"
+输出："帮我查下某员工在某地的出差记录"`;
+```
+
+### 5. 知识库管理
 
 - 文档向量化和存储
 - 余弦相似度检索（阈值 0.3）
 - LRU/FIFO 缓存淘汰策略
 - TTL 过期自动清理
 
-### 4. 模型管理
-
-- 支持 GGUF 格式模型（Qwen、Llama 等）
-- 本地模型：
-  - Router: `qwen2.5-0.5b-instruct-q8_0.gguf`
-  - Embedding: `bge-m3-q8_0.gguf`
-  - Desensitization: `Qwen3.5-4B-Q4_K_M.gguf`
-- 可调节参数：GPU 层数、上下文窗口大小
-
-### 5. 数据持久化
+### 6. 数据持久化
 
 - 内存 Map + SQLite 混合存储
 - 聊天记录持久化
@@ -179,40 +253,25 @@ pnpm clean
 
 ---
 
-## ✨ 最近更新 (2026-03-19)
+## ✨ 最近更新 (2026-03-20)
 
-### 🔥 端云协同架构升级
-- ✅ **ChatLlamaCpp 异步初始化**：修复 `node-llama-cpp` 模型加载问题
-- ✅ **LlamaCppEmbeddings 异步初始化**：修复 Embeddings 模型初始化
-- ✅ **Router 云端降级**：本地 LLM 失败时自动切换云端
-- ✅ **动态模块加载**：解决 ESM/CJS 兼容性问题
+### 🔥 LangChain LCEL Pipeline 架构
+- ✅ **LumenChain 类**：基于 RunnableLambda 的链式调用
+- ✅ **懒加载机制**：Router/Cloud/Translator Engine 按需加载
+- ✅ **函数式依赖注入**：解耦具体实现，便于测试
+- ✅ **职责分离**：LumenCore 管理基础设施，LumenChain 管理业务逻辑
 
-### 🎉 构建系统迁移到 pnpm + electron-vite
-- ✅ **包管理器**: npm → pnpm（更快安装速度，节省磁盘空间）
-- ✅ **构建工具**: Webpack → electron-vite（瞬时 HMR，更简洁的配置）
-- ✅ **性能提升**: 开发启动速度提升约 3-5x，热更新几乎即时
-- ✅ **配置简化**: 移除了复杂的 Webpack 配置，代码量减少约 60%
+### 🎯 Prompt 工程优化
+- ✅ **Few-shot 示例**：Router 和 Translator 都添加了具体示例
+- ✅ **精简指令**：去除冗长解释，适合小模型理解
+- ✅ **JSON 解析容错**：正则提取 JSON，提高解析成功率
 
-### 清理与优化
-- ✅ 删除所有 Webpack 相关配置文件
-- ✅ 清理旧构建产物（build/, config/, dist/）
-- ✅ 添加 `pnpm clean` 命令方便未来清理
-- ✅ 更新 TypeScript 配置以适配 Vite（moduleResolution: bundler）
+### 🔧 架构优化
+- ✅ **移除硬编码**：所有配置通过参数传递
+- ✅ **类型安全**：避免使用 `!` 非空断言，改用判空逻辑
+- ✅ **动态导入**：解决 ESM/CJS 兼容性问题
 
-### 依赖版本锁定
-- ✅ 所有依赖版本已精确锁定，避免安装时的版本不一致问题
-- ✅ 移除了 `^` 前缀，使用精确版本号确保构建稳定性
-- ✅ 包含 76 个依赖包的版本固化
-
-### .gitignore 优化
-- ✅ 添加设计稿文件忽略 (`lumen_design/`, `*.png`)
-- ✅ 添加开发脚本忽略 (`rebuild.sh`)
-- ✅ 添加 Bun 相关配置（为未来迁移做准备）
-- ✅ 添加测试文件和本地配置文件忽略规则
-
-### 项目结构清理
-- 📁 识别并标记可删除的文件（设计稿、临时文档等）
-- 🔧 优化版本控制策略，提升协作效率
+---
 
 ## 📦 项目结构
 
@@ -222,9 +281,15 @@ lumen/
 │   ├── main/           # 主进程（Electron Backend）
 │   │   ├── lumen_core/ # 核心引擎
 │   │   │   ├── ai/     # AI 推理模块
+│   │   │   │   └── cloud/ # 云端 LLM 引擎
 │   │   │   ├── db/     # 数据库模块
 │   │   │   ├── rag/    # RAG 检索模块
-│   │   │   └── tools/  # 工具服务
+│   │   │   ├── lumen-chain.ts  # LangChain Pipeline
+│   │   │   └── lumen-core.ts   # 核心引擎入口
+│   │   ├── tools/      # 工具服务
+│   │   │   ├── llm-prompt.ts   # Prompt 管理
+│   │   │   ├── llm-path.ts     # 模型路径
+│   │   │   └── logger.ts       # 日志服务
 │   │   └── index.ts    # 主进程入口
 │   ├── preload/        # 预加载脚本（IPC 桥接）
 │   └── renderer/       # 渲染进程（React Frontend）

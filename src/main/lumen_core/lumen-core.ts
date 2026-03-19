@@ -1,32 +1,15 @@
 import { LLMRole, LLMMessage, LumenCoreStatus, LumenCoreState } from '@shared/types';
-import LLMPrompt from '../tools/llm-prompt';
 import { logger } from '@main/tools/logger';
-import CloudLLMEngine from './ai/cloud/cloud-llm-engine';
-import { CloudLLMModel, CloudLLMProvider } from './ai/cloud/cloud-llm-config';
 import LLMPath from '../tools/llm-path';
 import DatabaseEngine from './db/database-engine';
 import RagEngine from './rag/rag-engine';
 import { Embeddings } from '@langchain/core/embeddings';
-
-type ChatModel =
-  Awaited<ReturnType<typeof import('@langchain/community/chat_models/llama_cpp').ChatLlamaCpp.prototype.invoke>> extends { content: infer T }
-    ? T
-    : never;
-
-interface RouterDecision {
-  needPrivateData: boolean;
-  needTranslator: boolean;
-  isSimpleQuery: boolean;
-  reason: string;
-}
+import { LumenChain } from './lumen-chain';
 
 class LumenCore {
   private dbEngine: DatabaseEngine | null = null;
   private ragEngine: RagEngine | null = null;
   private vectorEngine: Embeddings | null = null;
-  private routerEngine: any = null;
-  private translatorEngine: any = null;
-  private cloudEngine: CloudLLMEngine | null = null;
 
   private isTranslatorEnable: boolean = false;
   private chatHistory: LLMMessage[] = [];
@@ -84,29 +67,6 @@ class LumenCore {
       });
       logger.info('Vector Engine 初始化完成', 'LumenCore');
 
-      const { ChatLlamaCpp } = await import('@langchain/community/chat_models/llama_cpp');
-      this.routerEngine = await ChatLlamaCpp.initialize({
-        modelPath: LLMPath.getRouterLLM(),
-        temperature: 0,
-        gpuLayers: -1,
-        useMmap: true,
-      });
-      logger.info('Router Engine 初始化完成', 'LumenCore');
-
-      if (this.isTranslatorEnable) {
-        this.translatorEngine = await ChatLlamaCpp.initialize({
-          modelPath: LLMPath.getTranslatorLLM(),
-          temperature: 0.2,
-          gpuLayers: -1,
-          useMmap: true,
-        });
-        logger.info('Translator Engine 初始化完成', 'LumenCore');
-      }
-
-      this.cloudEngine = new CloudLLMEngine();
-      await this.cloudEngine.initialize(CloudLLMProvider.Qwen, CloudLLMModel.Qwen3_5Flash);
-      logger.info('Cloud Engine 初始化完成', 'LumenCore');
-
       this.ragEngine = new RagEngine();
       await this.ragEngine.initialize(this.dbEngine, this.vectorEngine);
       logger.info('RAG Engine 初始化完成', 'LumenCore');
@@ -121,127 +81,34 @@ class LumenCore {
     }
   }
 
-  private async router(userInput: string): Promise<RouterDecision> {
-    const messages = [
-      { role: LLMRole.System, content: LLMPrompt.router },
-      { role: LLMRole.User, content: userInput },
-    ];
-
-    let content: string;
-
-    try {
-      if (!this.routerEngine) {
-        throw new Error('Router Engine 未初始化');
-      }
-      const response = await this.routerEngine.invoke(messages);
-      content = response.content.toString();
-    } catch (localError) {
-      logger.warn(`本地 Router 失败，使用云端 LLM: ${localError}`, 'LumenCore');
-      if (!this.cloudEngine) {
-        logger.error('Cloud Engine 也未初始化，使用默认决策');
-        content = '{"needPrivateData":false,"needTranslator":false,"isSimpleQuery":true,"reason":"云端 LLM 未初始化"}';
-      } else {
-        content = await this.cloudEngine.chat([
-          { role: LLMRole.System, content: LLMPrompt.router },
-          { role: LLMRole.User, content: userInput },
-        ]);
-      }
-    }
-
-    try {
-      const cleanContent = content
-        .replace(/```json\n?/g, '')
-        .replace(/```\n?/g, '')
-        .trim();
-      const parsed = JSON.parse(cleanContent);
-      return {
-        needPrivateData: parsed.needPrivateData === '是',
-        needTranslator: parsed.needTranslator === '是',
-        isSimpleQuery: parsed.isSimpleQuery === '是',
-        reason: parsed.reason || '',
-      };
-    } catch {
-      logger.warn(`Router 解析失败，使用默认决策: ${content}`);
-      return {
-        needPrivateData: false,
-        needTranslator: false,
-        isSimpleQuery: true,
-        reason: '解析失败，默认走简单查询',
-      };
-    }
-  }
-
-  private async translate(userInput: string, context: string): Promise<string> {
-    if (!this.translatorEngine) {
-      const { ChatLlamaCpp } = await import('@langchain/community/chat_models/llama_cpp');
-      this.translatorEngine = new ChatLlamaCpp({
-        modelPath: LLMPath.getTranslatorLLM(),
-        temperature: 0.2,
-        contextSize: 1024,
-        gpuLayers: -1,
-        useMmap: true,
-      });
-    }
-
-    const prompt = LLMPrompt.translator.replace('{{userInput}}', userInput).replace('{{context}}', context);
-
-    const response = await this.translatorEngine.invoke([{ role: 'user', content: prompt }]);
-    return response.content.toString();
-  }
-
   async chat(question: string, onToken: (token: string) => void) {
-    if (!this.ragEngine || !this.cloudEngine) {
+    if (!this.ragEngine) {
       throw new Error('Lumen Engine 尚未初始化完成');
     }
 
     const startTime = Date.now();
+    const ragEngine = this.ragEngine;
     logger.chat(LLMRole.User, question);
 
     try {
-      const routerDecision = await this.router(question);
-      logger.info(
-        `Router 决策: needPrivateData=${routerDecision.needPrivateData}, needTranslator=${routerDecision.needTranslator}, isSimpleQuery=${routerDecision.isSimpleQuery}`,
-        'ROUTER',
-      );
+      const chain = new LumenChain((query, topK) => ragEngine.search(query, topK), this.isTranslatorEnable, onToken);
 
-      let finalPrompt: string;
-      let contexts: string[] = [];
-
-      if (routerDecision.isSimpleQuery) {
-        const systemPrompt = LLMPrompt.buildSystemPrompt(false);
-        finalPrompt = `${systemPrompt}\n\n用户问题: ${question}`;
-      } else {
-        contexts = await this.ragEngine.search(question, 3);
-        const contextText = contexts.length > 0 ? contexts.join('\n\n') : '';
-
-        if (routerDecision.needTranslator && this.isTranslatorEnable) {
-          finalPrompt = await this.translate(question, contextText);
-        } else {
-          const systemPrompt = LLMPrompt.buildSystemPrompt(true);
-          finalPrompt = contextText
-            ? `${systemPrompt}\n\n参考资料:\n${contextText}\n\n用户问题: ${question}`
-            : `${systemPrompt}\n\n用户问题: ${question}`;
-        }
-      }
-
-      const messages: LLMMessage[] = [...this.chatHistory, { role: LLMRole.User, content: finalPrompt }];
-
-      let fullResponse = '';
-
-      await this.cloudEngine.streamChat(messages, (token: string) => {
-        fullResponse += token;
-        onToken(token);
+      const result = await chain.invoke({
+        question,
+        chatHistory: this.chatHistory,
       });
 
-      logger.chat(LLMRole.Assistant, fullResponse);
-      await this.persistChatMessage(LLMRole.Assistant, fullResponse);
+      logger.chat(LLMRole.Assistant, result.response);
+      await this.persistChatMessage(LLMRole.Assistant, result.response);
       logger.perf('Total Response Time', Date.now() - startTime);
 
       this.chatHistory.push({ role: LLMRole.User, content: question });
-      this.chatHistory.push({ role: LLMRole.Assistant, content: fullResponse });
-      if (this.chatHistory.length > 10) this.chatHistory.splice(0, 2);
+      this.chatHistory.push({ role: LLMRole.Assistant, content: result.response });
+      if (this.chatHistory.length > 10) {
+        this.chatHistory.splice(0, 2);
+      }
 
-      return fullResponse;
+      return result.response;
     } catch (error) {
       const errorMsg = `\n[Lumen Error]: 处理请求时出错 - ${error}`;
       logger.error('Chat Flow Error', error);
@@ -319,9 +186,6 @@ class LumenCore {
     this.setStatus(LumenCoreStatus.Disposing, '正在释放资源...');
     try {
       this.vectorEngine = null;
-      this.routerEngine = null;
-      this.translatorEngine = null;
-      this.cloudEngine = null;
       this.ragEngine = null;
       this.chatHistory = [];
       await this.dbEngine?.close();

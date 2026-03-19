@@ -106,6 +106,7 @@
     "recharts": "2.15.4",
     "remark-gfm": "^4.0.1",
     "remeda": "^2.33.6",
+    "shell-env": "^4.0.3",
     "shiki": "^1.29.2",
     "sonner": "2.0.7",
     "tailwind-merge": "3.5.0",

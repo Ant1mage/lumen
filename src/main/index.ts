@@ -5,6 +5,22 @@ import LumenCore from '@main/lumen_core/lumen-core';
 import { LumenCoreService } from '@main/services/lumen-core.service';
 import { logger } from '@main/tools/logger';
 
+import { shellEnv } from 'shell-env';
+
+// 在 App ready 之前或之初执行
+async function syncEnv() {
+  try {
+    const env = await shellEnv();
+    // 将 zsh 中的变量注入到当前进程
+    process.env = { ...process.env, ...env };
+    console.log('✅ 环境变量已从 .zshrc 同步:', process.env.YOUR_API_KEY_NAME);
+  } catch (err) {
+    console.error('❌ 同步环境变量失败:', err);
+  }
+}
+
+syncEnv();
+
 let mainWindow: BrowserWindow | null = null;
 let lumenCore: LumenCore | null = null;
 const isDev = process.env.NODE_ENV === 'development';
@@ -68,25 +84,10 @@ app.whenReady().then(async () => {
   // 初始化 LumenCore（在窗口渲染完成后进行，不阻塞 UI）
   lumenCore = new LumenCore();
   LumenCoreService.getInstance().setLumenCore(lumenCore);
-
-  // 等待窗口渲染完成后再启动 LumenCore 初始化
-  const startLumenCore = () => {
-    logger.info('开始初始化 LumenCore', 'MAIN');
-    lumenCore!.initEngine().catch((err) => {
-      logger.error(`LumenCore 初始化失败：${err}`, 'MAIN');
-    });
-  };
-
-  mainWindow!.once('ready-to-show', () => {
-    logger.info('窗口 ready-to-show，开始初始化 LumenCore', 'MAIN');
-    startLumenCore();
+  logger.info('开始初始化 LumenCore', 'MAIN');
+  lumenCore.initEngine().catch((err) => {
+    logger.error(`LumenCore 初始化失败：${err}`, 'MAIN');
   });
-
-  // 备用：如果 ready-to-show 没触发，1秒后也启动
-  setTimeout(() => {
-    logger.info('超时备用：开始初始化 LumenCore', 'MAIN');
-    startLumenCore();
-  }, 1000);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

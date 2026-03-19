@@ -24,6 +24,7 @@ export namespace CloudLLMProvider {
   export function getConfig(
     provider: CloudLLMProvider,
   ): CloudLLMProviderConfig {
+    
     switch (provider) {
       case CloudLLMProvider.Qwen:
         return {
